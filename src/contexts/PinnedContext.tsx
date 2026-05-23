@@ -19,14 +19,22 @@ export interface PinnedQuote {
   pinnedAt: number
 }
 
-export type PinnedItem = PinnedEmail | PinnedQuote
+export interface PinnedNote {
+  type: 'note'
+  id: string
+  data: { text: string }
+  pinnedAt: number
+}
+
+export type PinnedItem = PinnedEmail | PinnedQuote | PinnedNote
 
 interface PinnedContextType {
   pinned: PinnedItem[]
   pinEmail: (email: ParsedEmail) => void
   pinQuote: (quote: { id: number; quote: string; author: string }) => void
-  unpin: (type: 'email' | 'quote', id: string | number) => void
-  isPinned: (type: 'email' | 'quote', id: string | number) => boolean
+  pinNote: (text: string) => void
+  unpin: (type: 'email' | 'quote' | 'note', id: string | number) => void
+  isPinned: (type: 'email' | 'quote' | 'note', id: string | number) => boolean
   reorder: (items: PinnedItem[]) => void
 }
 
@@ -37,12 +45,9 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
   const [firebaseReady, setFirebaseReady] = useState(false)
   const { activeAccounts } = useAuth()
 
-  // Use the primary Gmail account email as the stable cross-device key
   const primaryEmail = activeAccounts[0]?.user.email ?? null
-  // Encode email so it's safe as a Firestore document ID
   const docKey = primaryEmail ? encodeURIComponent(primaryEmail) : null
 
-  // Ensure anonymous Firebase session exists (required to write to Firestore)
   useEffect(() => {
     return onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -54,7 +59,6 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  // Real-time Firestore listener keyed by email — same data on all devices
   useEffect(() => {
     if (!docKey || !firebaseReady) { setPinned([]); return }
 
@@ -73,8 +77,7 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
   const pinEmail = useCallback((email: ParsedEmail) => {
     if (!docKey || !firebaseReady) return
     const item: PinnedEmail = { type: 'email', id: email.id, data: email, pinnedAt: Date.now() }
-    const sanitized = JSON.parse(JSON.stringify(item))
-    setDoc(doc(db, 'users', docKey, 'pinned', `email_${email.id}`), sanitized).catch(console.error)
+    setDoc(doc(db, 'users', docKey, 'pinned', `email_${email.id}`), JSON.parse(JSON.stringify(item))).catch(console.error)
   }, [docKey, firebaseReady])
 
   const pinQuote = useCallback((quote: { id: number; quote: string; author: string }) => {
@@ -83,7 +86,14 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
     setDoc(doc(db, 'users', docKey, 'pinned', `quote_${quote.id}`), item).catch(console.error)
   }, [docKey, firebaseReady])
 
-  const unpin = useCallback((type: 'email' | 'quote', id: string | number) => {
+  const pinNote = useCallback((text: string) => {
+    if (!docKey || !firebaseReady) return
+    const id = Date.now().toString()
+    const item: PinnedNote = { type: 'note', id, data: { text }, pinnedAt: Date.now() }
+    setDoc(doc(db, 'users', docKey, 'pinned', `note_${id}`), item).catch(console.error)
+  }, [docKey, firebaseReady])
+
+  const unpin = useCallback((type: 'email' | 'quote' | 'note', id: string | number) => {
     if (!docKey || !firebaseReady) return
     deleteDoc(doc(db, 'users', docKey, 'pinned', `${type}_${id}`)).catch(console.error)
   }, [docKey, firebaseReady])
@@ -92,20 +102,20 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
     if (!docKey || !firebaseReady) return
     const now = Date.now()
     items.forEach((item, i) => {
-      const id = item.type === 'email' ? `email_${item.id}` : `quote_${item.id}`
+      const id = item.type === 'email' ? `email_${item.id}` : item.type === 'quote' ? `quote_${item.id}` : `note_${item.id}`
       const pinnedAt = now + (items.length - i) * 1000
       updateDoc(doc(db, 'users', docKey, 'pinned', id), { pinnedAt }).catch(console.error)
     })
   }, [docKey, firebaseReady])
 
   const isPinned = useCallback(
-    (type: 'email' | 'quote', id: string | number) =>
+    (type: 'email' | 'quote' | 'note', id: string | number) =>
       pinned.some((p) => p.type === type && p.id === id),
     [pinned]
   )
 
   return (
-    <PinnedContext.Provider value={{ pinned, pinEmail, pinQuote, unpin, isPinned, reorder }}>
+    <PinnedContext.Provider value={{ pinned, pinEmail, pinQuote, pinNote, unpin, isPinned, reorder }}>
       {children}
     </PinnedContext.Provider>
   )
