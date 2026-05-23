@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Star, Paperclip, Pin, Archive, Trash2 } from 'lucide-react'
+import { Star, Paperclip, Pin, Archive } from 'lucide-react'
 import type { ParsedEmail } from '../types/gmail'
 import { formatEmailDate, getInitials, getAvatarColor } from '../utils/formatters'
 import { useEmailActions } from '../hooks/useEmailDetail'
@@ -16,7 +16,7 @@ const SWIPE_THRESHOLD = 80
 
 export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
   const navigate = useNavigate()
-  const { star, markRead, archive, trash } = useEmailActions()
+  const { star, markRead, archive } = useEmailActions()
   const { accounts } = useAuth()
   const { pinEmail, unpin, isPinned } = usePinned()
   const multipleAccounts = accounts.length > 1
@@ -67,11 +67,7 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
       contentRef.current.style.transform = `translateX(${dir * 110}vw)`
       contentRef.current.style.opacity = '0'
       setTimeout(() => {
-        if (dir > 0) {
-          archive.mutate({ id: email.id, accountEmail: email.accountEmail })
-        } else {
-          trash.mutate({ id: email.id, accountEmail: email.accountEmail })
-        }
+        archive.mutate({ id: email.id, accountEmail: email.accountEmail })
       }, 180)
     } else {
       contentRef.current.style.transition = 'transform 0.2s ease'
@@ -107,22 +103,21 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
 
   return (
     <div className="relative overflow-hidden border-b border-gray-100">
-      {/* Swipe action backgrounds */}
-      <div className="absolute inset-0 flex items-center justify-between px-5">
-        <div className="flex items-center gap-2 text-white">
-          <Archive size={20} />
-          <span className="text-sm font-medium">Archive</span>
-        </div>
-        <div className="flex items-center gap-2 text-white">
-          <span className="text-sm font-medium">Trash</span>
-          <Trash2 size={20} />
-        </div>
-      </div>
-      {/* Swipe colour fills */}
-      <div className="absolute inset-0 flex">
-        <div className="w-1/2 bg-green-500" />
-        <div className="w-1/2 bg-red-500" />
-      </div>
+      {/* Swipe action background — hidden for pinned items */}
+      {!inPinnedSection && (
+        <>
+          <div className="absolute inset-0 bg-green-500 flex items-center justify-between px-5">
+            <div className="flex items-center gap-2 text-white">
+              <Archive size={20} />
+              <span className="text-sm font-medium">Archive</span>
+            </div>
+            <div className="flex items-center gap-2 text-white">
+              <span className="text-sm font-medium">Archive</span>
+              <Archive size={20} />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Email row — slides on swipe */}
       <div
