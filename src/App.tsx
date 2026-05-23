@@ -2,6 +2,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { PinnedProvider } from './contexts/PinnedContext'
 import LoginPage from './components/LoginPage'
 import MainLayout from './components/MainLayout'
 
@@ -42,7 +43,9 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
-            <AppContent />
+            <PinnedProvider>
+              <AppContent />
+            </PinnedProvider>
           </AuthProvider>
         </BrowserRouter>
       </QueryClientProvider>

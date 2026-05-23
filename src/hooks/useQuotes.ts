@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-interface Quote {
+export interface Quote {
   id: number
   quote: string
   author: string

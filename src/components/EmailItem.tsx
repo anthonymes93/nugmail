@@ -1,19 +1,23 @@
 import { useNavigate } from 'react-router-dom'
-import { Star, Paperclip } from 'lucide-react'
+import { Star, Paperclip, Pin } from 'lucide-react'
 import type { ParsedEmail } from '../types/gmail'
 import { formatEmailDate, getInitials, getAvatarColor } from '../utils/formatters'
 import { useEmailActions } from '../hooks/useEmailDetail'
 import { useAuth } from '../contexts/AuthContext'
+import { usePinned } from '../contexts/PinnedContext'
 
 interface EmailItemProps {
   email: ParsedEmail
+  inPinnedSection?: boolean
 }
 
-export default function EmailItem({ email }: EmailItemProps) {
+export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
   const navigate = useNavigate()
   const { star, markRead } = useEmailActions()
   const { accounts } = useAuth()
+  const { pinEmail, unpin, isPinned } = usePinned()
   const multipleAccounts = accounts.length > 1
+  const pinned = isPinned('email', email.id)
 
   const handleClick = () => {
     if (email.isUnread) {
@@ -27,6 +31,12 @@ export default function EmailItem({ email }: EmailItemProps) {
     star.mutate({ id: email.id, starred: !email.isStarred, accountEmail: email.accountEmail })
   }
 
+  const handlePin = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (pinned) unpin('email', email.id)
+    else pinEmail(email)
+  }
+
   const senderColor = getAvatarColor(email.fromEmail)
   const accountColor = getAvatarColor(email.accountEmail)
   const initials = getInitials(email.fromName)
@@ -37,16 +47,19 @@ export default function EmailItem({ email }: EmailItemProps) {
       className={`
         flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors select-none
         border-b border-gray-100
-        ${email.isUnread ? 'bg-white hover:bg-gray-50' : 'bg-g-bg hover:bg-gray-100'}
+        ${inPinnedSection ? 'bg-amber-50/60 hover:bg-amber-50' : email.isUnread ? 'bg-white hover:bg-gray-50' : 'bg-g-bg hover:bg-gray-100'}
       `}
     >
-      {/* Sender avatar with optional account badge */}
+      {/* Sender avatar */}
       <div className="relative flex-shrink-0">
         <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-medium ${senderColor}`}>
           {initials}
         </div>
         {multipleAccounts && (
-          <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center text-white font-bold ${accountColor}`} style={{ fontSize: '7px' }}>
+          <div
+            className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center text-white font-bold ${accountColor}`}
+            style={{ fontSize: '7px' }}
+          >
             {email.accountEmail[0].toUpperCase()}
           </div>
         )}
@@ -74,6 +87,18 @@ export default function EmailItem({ email }: EmailItemProps) {
           <p className="text-xs text-gray-400 truncate">{email.accountEmail}</p>
         )}
       </div>
+
+      {/* Pin */}
+      <button
+        onClick={handlePin}
+        className="p-1 rounded-full hover:bg-gray-200 flex-shrink-0 transition-colors"
+        aria-label={pinned ? 'Unpin' : 'Pin'}
+      >
+        <Pin
+          size={15}
+          className={pinned ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}
+        />
+      </button>
 
       {/* Star */}
       <button
