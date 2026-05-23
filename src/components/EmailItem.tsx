@@ -84,6 +84,7 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
   const isHorizontal = useRef<boolean | null>(null)
   const wasSwipe = useRef(false)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastTapTime = useRef(0)
 
   const cancelLongPress = () => {
     if (longPressTimer.current) {
@@ -153,6 +154,18 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
 
     isHorizontal.current = null
     currentX.current = 0
+
+    // Double-tap detection
+    if (!wasSwipe.current && !isHorizontal.current) {
+      const now = Date.now()
+      if (now - lastTapTime.current < 300) {
+        lastTapTime.current = 0
+        wasSwipe.current = true // suppress the click
+        setMenuOpen(true)
+      } else {
+        lastTapTime.current = now
+      }
+    }
   }
 
   const handleClick = () => {
