@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Star, Paperclip, Pin, Archive, Reply, Forward, MailOpen, FolderInput, Tag, Ban, X } from 'lucide-react'
+import { Star, Paperclip, Pin, Archive, Reply, Forward, MailOpen, FolderInput, Tag, Ban, Flame, X } from 'lucide-react'
 import type { ParsedEmail } from '../types/gmail'
 import { formatEmailDate, getInitials, getAvatarColor } from '../utils/formatters'
 import { useEmailActions } from '../hooks/useEmailDetail'
 import { useAuth } from '../contexts/AuthContext'
 import { usePinned } from '../contexts/PinnedContext'
+import { useHott } from '../contexts/HottContext'
 
 interface EmailItemProps {
   email: ParsedEmail
@@ -29,9 +30,17 @@ const MENU_ITEMS = [
 
 function ContextMenu({ email, onClose }: { email: ParsedEmail; onClose: () => void }) {
   const openedAt = useRef(Date.now())
+  const { addToHott, removeFromHott, isHott } = useHott()
+  const hott = isHott(email.id)
 
   const handleBackdropClick = () => {
     if (Date.now() - openedAt.current < 350) return
+    onClose()
+  }
+
+  const handleHott = () => {
+    if (hott) removeFromHott(email.id)
+    else addToHott(email)
     onClose()
   }
 
@@ -51,6 +60,18 @@ function ContextMenu({ email, onClose }: { email: ParsedEmail; onClose: () => vo
             <X size={18} className="text-gray-400" />
           </button>
         </div>
+
+        {/* Hott action */}
+        <button
+          onClick={handleHott}
+          className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-orange-50 active:bg-orange-100 text-left border-b border-gray-100"
+        >
+          <Flame size={20} className={hott ? 'text-orange-500' : 'text-gray-400'} />
+          <span className={`text-sm font-medium ${hott ? 'text-orange-500' : 'text-gray-800'}`}>
+            {hott ? 'Remove from Hott' : 'Add to Hott'}
+          </span>
+        </button>
+
         {MENU_ITEMS.map(({ icon: Icon, label }) => (
           <button
             key={label}

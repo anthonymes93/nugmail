@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { PinnedProvider } from './contexts/PinnedContext'
+import { HottProvider } from './contexts/HottContext'
 import LoginPage from './components/LoginPage'
 import MainLayout from './components/MainLayout'
 
@@ -44,7 +45,9 @@ export default function App() {
         <BrowserRouter>
           <AuthProvider>
             <PinnedProvider>
-              <AppContent />
+              <HottProvider>
+                <AppContent />
+              </HottProvider>
             </PinnedProvider>
           </AuthProvider>
         </BrowserRouter>
