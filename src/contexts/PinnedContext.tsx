@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { collection, onSnapshot, setDoc, deleteDoc, doc } from 'firebase/firestore'
+import { collection, onSnapshot, setDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore'
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
 import { auth, db } from '../lib/firebase'
 import { useAuth } from './AuthContext'
@@ -27,6 +27,7 @@ interface PinnedContextType {
   pinQuote: (quote: { id: number; quote: string; author: string }) => void
   unpin: (type: 'email' | 'quote', id: string | number) => void
   isPinned: (type: 'email' | 'quote', id: string | number) => boolean
+  reorder: (items: PinnedItem[]) => void
 }
 
 const PinnedContext = createContext<PinnedContextType | null>(null)
@@ -87,6 +88,16 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
     deleteDoc(doc(db, 'users', docKey, 'pinned', `${type}_${id}`)).catch(console.error)
   }, [docKey, firebaseReady])
 
+  const reorder = useCallback((items: PinnedItem[]) => {
+    if (!docKey || !firebaseReady) return
+    const now = Date.now()
+    items.forEach((item, i) => {
+      const id = item.type === 'email' ? `email_${item.id}` : `quote_${item.id}`
+      const pinnedAt = now + (items.length - i) * 1000
+      updateDoc(doc(db, 'users', docKey, 'pinned', id), { pinnedAt }).catch(console.error)
+    })
+  }, [docKey, firebaseReady])
+
   const isPinned = useCallback(
     (type: 'email' | 'quote', id: string | number) =>
       pinned.some((p) => p.type === type && p.id === id),
@@ -94,7 +105,7 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
   )
 
   return (
-    <PinnedContext.Provider value={{ pinned, pinEmail, pinQuote, unpin, isPinned }}>
+    <PinnedContext.Provider value={{ pinned, pinEmail, pinQuote, unpin, isPinned, reorder }}>
       {children}
     </PinnedContext.Provider>
   )

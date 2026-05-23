@@ -1,8 +1,24 @@
 import { useSearchParams } from 'react-router-dom'
-import { RefreshCw, Loader2, Mail, Pin } from 'lucide-react'
+import { RefreshCw, Loader2, Mail, Pin, GripVertical } from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  TouchSensor,
+  MouseSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useEmailList } from '../hooks/useEmailList'
 import { useQuotes, type Quote } from '../hooks/useQuotes'
-import { usePinned } from '../contexts/PinnedContext'
+import { usePinned, type PinnedItem } from '../contexts/PinnedContext'
 import EmailItem from './EmailItem'
 
 interface EmailListProps {
@@ -57,51 +73,113 @@ function QuoteDivider({ quote }: { quote?: Quote }) {
   )
 }
 
+function SortablePinnedItem({ item }: { item: PinnedItem }) {
+  const { unpin } = usePinned()
+  const sortableId = item.type === 'email' ? `email_${item.id}` : `quote_${item.id}`
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: sortableId })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    position: 'relative' as const,
+    zIndex: isDragging ? 10 : undefined,
+  }
+
+  if (item.type === 'email') {
+    return (
+      <div ref={setNodeRef} style={style}>
+        <div className="relative">
+          <EmailItem email={item.data} inPinnedSection />
+          {/* Drag handle — left edge, above the avatar */}
+          <div
+            ref={setActivatorNodeRef}
+            {...attributes}
+            {...listeners}
+            className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center touch-none cursor-grab active:cursor-grabbing"
+            aria-label="Drag to reorder"
+          >
+            <GripVertical size={15} className="text-amber-300" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Quote pinned item
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div className="relative flex items-center gap-3 px-3 py-2 border-b border-amber-100 bg-gradient-to-r from-amber-50/80 to-orange-50/80 select-none">
+        {/* Drag handle */}
+        <div
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          className="flex-shrink-0 touch-none cursor-grab active:cursor-grabbing p-1"
+          aria-label="Drag to reorder"
+        >
+          <GripVertical size={15} className="text-amber-300" />
+        </div>
+        <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-amber-400 to-orange-400 text-white text-base">
+          ✦
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-amber-500 truncate">{item.data.author}</span>
+            <span className="text-xs text-orange-300 flex-shrink-0">pinned quote</span>
+          </div>
+          <p className="text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500 truncate">
+            {item.data.quote}
+          </p>
+        </div>
+        <button
+          onClick={() => unpin('quote', item.id)}
+          className="p-1 rounded-full hover:bg-amber-200 flex-shrink-0 transition-colors"
+          aria-label="Unpin"
+        >
+          <Pin size={15} className="fill-amber-400 text-amber-400" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function PinnedSection() {
-  const { pinned, unpin } = usePinned()
+  const { pinned, reorder } = usePinned()
+
+  const sensors = useSensors(
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+  )
 
   if (pinned.length === 0) return null
 
+  const ids = pinned.map((item) => (item.type === 'email' ? `email_${item.id}` : `quote_${item.id}`))
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = ids.indexOf(active.id as string)
+    const newIndex = ids.indexOf(over.id as string)
+    reorder(arrayMove(pinned, oldIndex, newIndex))
+  }
+
   return (
     <div className="border-b-2 border-amber-200">
-      {/* Header */}
       <div className="flex items-center gap-2 px-4 py-2 bg-amber-50">
         <Pin size={14} className="fill-amber-400 text-amber-400" />
         <span className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Pinned</span>
       </div>
-
-      {pinned.map((item) => {
-        if (item.type === 'email') {
-          return <EmailItem key={`pin-email-${item.id}`} email={item.data} inPinnedSection />
-        }
-        // Quote
-        return (
-          <div
-            key={`pin-quote-${item.id}`}
-            className="flex items-center gap-3 px-3 py-2 border-b border-amber-100 bg-gradient-to-r from-amber-50/80 to-orange-50/80 select-none"
-          >
-            <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-amber-400 to-orange-400 text-white text-base">
-              ✦
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-amber-500 truncate">{item.data.author}</span>
-                <span className="text-xs text-orange-300 flex-shrink-0">pinned quote</span>
-              </div>
-              <p className="text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500 truncate">
-                {item.data.quote}
-              </p>
-            </div>
-            <button
-              onClick={() => unpin('quote', item.id)}
-              className="p-1 rounded-full hover:bg-amber-200 flex-shrink-0 transition-colors"
-              aria-label="Unpin"
-            >
-              <Pin size={15} className="fill-amber-400 text-amber-400" />
-            </button>
-          </div>
-        )
-      })}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+          {pinned.map((item) => (
+            <SortablePinnedItem
+              key={item.type === 'email' ? `email_${item.id}` : `quote_${item.id}`}
+              item={item}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
     </div>
   )
 }
@@ -143,10 +221,8 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
 
   return (
     <div className="flex flex-col">
-      {/* Pinned section — always at the top */}
       <PinnedSection />
 
-      {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
         <h2 className="text-sm font-medium text-gray-600">{title}</h2>
         <button
