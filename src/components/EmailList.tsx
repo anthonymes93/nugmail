@@ -98,7 +98,7 @@ function SortablePinnedItem({ item }: { item: EmailOrQuote }) {
     transition,
     opacity: isDragging ? 0.4 : 1,
     zIndex: isDragging ? 10 : undefined,
-    touchAction: 'none' as const,
+    touchAction: 'pan-y' as const,
   }
 
   if (item.type === 'email') {
@@ -288,7 +288,7 @@ function NoteCompose({ textareaRef, value, dueAt, onChange, onDueAtChange, onSub
 function SortableNoteItem({ item, onUnpin }: { item: import('../contexts/PinnedContext').PinnedNote; onUnpin: () => void }) {
   const sortableId = `note_${item.id}`
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sortableId })
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, zIndex: isDragging ? 10 : undefined, touchAction: 'none' as const }
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, zIndex: isDragging ? 10 : undefined, touchAction: 'pan-y' as const }
   const dueAt = item.data.dueAt ? formatNoteDueAt(item.data.dueAt) : null
 
   return (
