@@ -14,6 +14,10 @@ import DOMPurify from 'dompurify'
 
 const GOAL_COLORS = ['#1a73e8', '#16a34a', '#eab308', '#dc2626', '#9333ea', '#0891b2', '#f97316', '#db2777']
 
+function fallbackGoalLabel(goal: Goal) {
+  return goal.text.split(/\s+/)[0]?.replace(/[^a-z0-9]/gi, '').slice(0, 12) || 'Goal'
+}
+
 function GoalRelevanceBar({ goals, scores, labels, isLoading }: {
   goals: Goal[]
   scores: { goalId: string; score: number }[] | undefined
@@ -33,7 +37,7 @@ function GoalRelevanceBar({ goals, scores, labels, isLoading }: {
       {activeGoals.map((goal, index) => {
         const score = isLoading ? 0 : Math.max(0, Math.min(100, scoreByGoal.get(goal.id) ?? 0))
         const color = GOAL_COLORS[index % GOAL_COLORS.length]
-        const label = labelByGoal.get(goal.id) ?? ''
+        const label = labelByGoal.get(goal.id) ?? fallbackGoalLabel(goal)
 
         return (
           <div
@@ -47,7 +51,7 @@ function GoalRelevanceBar({ goals, scores, labels, isLoading }: {
                 style={{ width: `${score}%`, backgroundColor: color }}
               />
             </div>
-            <div className="mt-0.5 truncate text-center text-[8px] leading-none text-gray-400">
+            <div className="mt-0.5 truncate text-center text-[9px] leading-none text-gray-500">
               {label}
             </div>
           </div>

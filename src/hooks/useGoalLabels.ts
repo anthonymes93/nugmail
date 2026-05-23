@@ -32,7 +32,7 @@ export function useGoalLabels(goals: Goal[]) {
     enabled: activeGoals.length > 0,
     staleTime: Infinity,
     gcTime: Infinity,
-    initialData: () => readCachedLabels(activeGoals),
+    placeholderData: () => readCachedLabels(activeGoals),
     queryFn: async () => {
       const cached = readCachedLabels(activeGoals)
       const cachedIds = new Set(cached.map((label) => label.goalId))
