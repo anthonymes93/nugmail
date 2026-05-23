@@ -103,6 +103,7 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
   const touchStartY = useRef(0)
   const currentX = useRef(0)
   const isHorizontal = useRef<boolean | null>(null)
+  const touchMoved = useRef(false)
   const wasSwipe = useRef(false)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const longPressActivated = useRef(false)
@@ -128,6 +129,7 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
     touchStartY.current = e.touches[0].clientY
     currentX.current = 0
     isHorizontal.current = null
+    touchMoved.current = false
     wasSwipe.current = false
     longPressActivated.current = false
     if (contentRef.current) contentRef.current.style.transition = 'none'
@@ -151,7 +153,11 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
     const dx = e.touches[0].clientX - touchStartX.current
     const dy = e.touches[0].clientY - touchStartY.current
 
-    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) cancelLongPress()
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+      touchMoved.current = true
+      wasSwipe.current = true
+      cancelLongPress()
+    }
     if (inPinnedSection) return
 
     if (isHorizontal.current === null) {
@@ -170,7 +176,9 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
 
     const dx = currentX.current
     const direction = isHorizontal.current // true=horizontal, false=vertical, null=no movement
+    const moved = touchMoved.current
     isHorizontal.current = null
+    touchMoved.current = false
     currentX.current = 0
 
     if (!inPinnedSection && direction === true && Math.abs(dx) >= SWIPE_THRESHOLD) {
@@ -189,6 +197,7 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
       // Vertical scroll — do nothing, let the browser handle it
     } else {
       // direction === null: finger barely moved → genuine tap
+      if (moved) return
       if (longPressActivated.current) { longPressActivated.current = false; return }
 
       // Tap — check for double-tap; delay single-tap navigation
