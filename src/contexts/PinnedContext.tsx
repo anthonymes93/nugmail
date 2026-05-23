@@ -32,42 +32,49 @@ const PinnedContext = createContext<PinnedContextType | null>(null)
 
 export function PinnedProvider({ children }: { children: ReactNode }) {
   const [pinned, setPinned] = useState<PinnedItem[]>([])
-  const [uid, setUid] = useState<string | null>(auth.currentUser?.uid ?? null)
+  const [uid, setUid] = useState<string | null>(null)
 
-  // Ensure there is always a Firebase session for Firestore writes.
-  // On refresh, Firebase restores an existing anonymous session from IndexedDB.
-  // If nothing is found (first visit or cleared storage), create one now.
+  // Single effect: track auth state and ensure anonymous session exists
   useEffect(() => {
-    auth.authStateReady().then(() => {
-      if (!auth.currentUser) signInAnonymously(auth).catch(console.error)
+    return onAuthStateChanged(auth, (user) => {
+      console.log('[PIN] auth state:', user ? `uid=${user.uid} anon=${user.isAnonymous}` : 'null')
+      if (user) {
+        setUid(user.uid)
+      } else {
+        setUid(null)
+        console.log('[PIN] no user — signing in anonymously')
+        signInAnonymously(auth)
+          .then(() => console.log('[PIN] anonymous sign-in OK'))
+          .catch((err) => console.error('[PIN] anonymous sign-in FAILED:', err))
+      }
     })
-  }, [])
-
-  // Track Firebase Auth state (Firebase restores this from IndexedDB on refresh)
-  useEffect(() => {
-    return onAuthStateChanged(auth, (user) => setUid(user?.uid ?? null))
   }, [])
 
   // Real-time Firestore listener — reconnects whenever uid changes
   useEffect(() => {
     if (!uid) { setPinned([]); return }
+    console.log('[PIN] attaching Firestore listener for uid:', uid)
 
     const ref = collection(db, 'users', uid, 'pinned')
     return onSnapshot(
       ref,
       (snap) => {
+        console.log('[PIN] snapshot received, docs:', snap.docs.length)
         const items = snap.docs.map((d) => d.data() as PinnedItem)
         items.sort((a, b) => b.pinnedAt - a.pinnedAt)
         setPinned(items)
       },
-      (err) => console.error('Firestore pinned error:', err)
+      (err) => console.error('[PIN] Firestore snapshot error:', err)
     )
   }, [uid])
 
   const pinEmail = useCallback((email: ParsedEmail) => {
+    console.log('[PIN] pinEmail uid:', uid)
     if (!uid) return
     const item: PinnedEmail = { type: 'email', id: email.id, data: email, pinnedAt: Date.now() }
-    setDoc(doc(db, 'users', uid, 'pinned', `email_${email.id}`), item).catch(console.error)
+    setDoc(doc(db, 'users', uid, 'pinned', `email_${email.id}`), item)
+      .then(() => console.log('[PIN] setDoc OK'))
+      .catch((err) => console.error('[PIN] setDoc FAILED:', err))
   }, [uid])
 
   const pinQuote = useCallback((quote: { id: number; quote: string; author: string }) => {
