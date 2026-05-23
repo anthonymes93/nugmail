@@ -14,7 +14,7 @@ interface EmailItemProps {
 }
 
 const SWIPE_THRESHOLD = 80
-const LONG_PRESS_MS = 3000
+const LONG_PRESS_MS = 500
 const DOUBLE_TAP_MS = 300
 
 const MENU_ITEMS = [
