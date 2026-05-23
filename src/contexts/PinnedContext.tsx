@@ -36,7 +36,10 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
 
   // Track Firebase Auth state (Firebase restores this from IndexedDB on refresh)
   useEffect(() => {
-    return onAuthStateChanged(auth, (user) => setUid(user?.uid ?? null))
+    return onAuthStateChanged(auth, (user) => {
+      console.log('[PinnedContext] auth state changed, uid:', user?.uid ?? null)
+      setUid(user?.uid ?? null)
+    })
   }, [])
 
   // Real-time Firestore listener — reconnects whenever uid changes
@@ -56,9 +59,12 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
   }, [uid])
 
   const pinEmail = useCallback((email: ParsedEmail) => {
+    console.log('[PinnedContext] pinEmail called, uid:', uid)
     if (!uid) return
     const item: PinnedEmail = { type: 'email', id: email.id, data: email, pinnedAt: Date.now() }
-    setDoc(doc(db, 'users', uid, 'pinned', `email_${email.id}`), item).catch(console.error)
+    setDoc(doc(db, 'users', uid, 'pinned', `email_${email.id}`), item)
+      .then(() => console.log('[PinnedContext] pinEmail write OK'))
+      .catch((err) => console.error('[PinnedContext] pinEmail write FAILED:', err))
   }, [uid])
 
   const pinQuote = useCallback((quote: { id: number; quote: string; author: string }) => {
