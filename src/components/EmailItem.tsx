@@ -146,11 +146,11 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
     if (!contentRef.current) return
 
     const dx = currentX.current
-    const wasHorizontal = isHorizontal.current === true
+    const direction = isHorizontal.current // true=horizontal, false=vertical, null=no movement
     isHorizontal.current = null
     currentX.current = 0
 
-    if (!inPinnedSection && wasHorizontal && Math.abs(dx) >= SWIPE_THRESHOLD) {
+    if (!inPinnedSection && direction === true && Math.abs(dx) >= SWIPE_THRESHOLD) {
       // Full swipe → archive
       wasSwipe.current = true
       const dir = dx > 0 ? 1 : -1
@@ -158,12 +158,14 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
       contentRef.current.style.transform = `translateX(${dir * 110}vw)`
       contentRef.current.style.opacity = '0'
       setTimeout(() => archive.mutate({ id: email.id, accountEmail: email.accountEmail }), 180)
-    } else if (wasHorizontal) {
-      // Short swipe → snap back
+    } else if (direction === true) {
+      // Short horizontal swipe → snap back
       contentRef.current.style.transition = 'transform 0.2s ease'
       contentRef.current.style.transform = 'translateX(0)'
+    } else if (direction === false) {
+      // Vertical scroll — do nothing, let the browser handle it
     } else {
-      // If long press already showed the menu, ignore the finger-lift entirely
+      // direction === null: finger barely moved → genuine tap
       if (longPressActivated.current) { longPressActivated.current = false; return }
 
       // Tap — check for double-tap; delay single-tap navigation
