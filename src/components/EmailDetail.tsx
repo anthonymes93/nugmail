@@ -17,10 +17,10 @@ const GOAL_COLORS = ['#1a73e8', '#16a34a', '#eab308', '#dc2626', '#9333ea', '#08
 function fallbackGoalLabel(goal: Goal) {
   return goal.text
     .split(/\s+/)
-    .slice(0, 3)
+    .slice(0, 5)
     .join(' ')
     .replace(/[^a-z0-9 ]/gi, '')
-    .slice(0, 24) || 'Goal'
+    .slice(0, 40) || 'Goal'
 }
 
 function GoalRelevanceBar({ goals, scores, labels, isLoading }: {
@@ -56,7 +56,7 @@ function GoalRelevanceBar({ goals, scores, labels, isLoading }: {
                 style={{ width: `${score}%`, backgroundColor: color }}
               />
             </div>
-            <div className="mt-0.5 line-clamp-2 break-words text-center text-[7px] leading-[0.65rem] text-gray-500">
+            <div className="mt-0.5 truncate whitespace-nowrap text-center text-[7px] leading-none text-gray-500">
               {label}
             </div>
           </div>

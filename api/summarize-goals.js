@@ -8,12 +8,12 @@ function cleanLabel(value, fallback) {
     .replace(/\s+/g, ' ')
     .trim()
     .split(' ')
-    .slice(0, 3)
+    .slice(0, 5)
     .join(' ')
-    .slice(0, 24)
+    .slice(0, 40)
 
   if (label) return label
-  return String(fallback ?? 'Goal').replace(/[^a-z0-9 ]/gi, '').trim().slice(0, 24) || 'Goal'
+  return String(fallback ?? 'Goal').replace(/[^a-z0-9 ]/gi, '').trim().slice(0, 40) || 'Goal'
 }
 
 export default async function handler(req, res) {
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
             content: [
               {
                 type: 'input_text',
-                text: 'Create one tiny display label for each user goal. Use 2 to 3 short words when helpful. No punctuation. Keep each label under 24 characters and make it more descriptive than a single vague word.',
+                text: 'Create one tiny display label for each user goal. Use up to 5 short words when helpful. No punctuation. Keep each label under 40 characters and make it descriptive enough to identify the goal.',
               },
             ],
           },
