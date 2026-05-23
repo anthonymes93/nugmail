@@ -252,7 +252,7 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           className={`
-            relative flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors select-none
+            relative flex items-start gap-3 px-3 py-2.5 cursor-pointer transition-colors select-none
             ${inPinnedSection ? 'bg-amber-50/60 hover:bg-amber-50' : email.isUnread ? 'bg-white hover:bg-gray-50' : 'bg-g-bg hover:bg-gray-100'}
           `}
         >
@@ -280,12 +280,11 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
                 {formatEmailDate(email.internalDate)}
               </span>
             </div>
-            <div className="flex items-center gap-1">
-              <p className={`text-sm truncate ${email.isUnread ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+            <div className="mt-0.5 space-y-0.5">
+              <p className={`text-sm leading-snug overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] ${email.isUnread ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
                 {email.subject}
               </p>
-              <span className="text-gray-400 text-sm flex-shrink-0">—</span>
-              <p className="text-sm text-gray-500 truncate flex-1">{email.snippet}</p>
+              <p className="text-sm leading-snug text-gray-500 overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]">{email.snippet}</p>
             </div>
             {multipleAccounts && (
               <p className="text-xs text-gray-400 truncate">{email.accountEmail}</p>
@@ -294,7 +293,7 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
 
           <button
             onClick={handlePin}
-            className="p-1 rounded-full hover:bg-gray-200 flex-shrink-0 transition-colors"
+            className="p-1 rounded-full hover:bg-gray-200 flex-shrink-0 transition-colors mt-0.5"
             aria-label={pinned ? 'Unpin' : 'Pin'}
           >
             <Pin size={15} className={pinned ? 'fill-amber-400 text-amber-400' : 'text-gray-300'} />
@@ -302,7 +301,7 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
 
           <button
             onClick={handleStar}
-            className="p-1 rounded-full hover:bg-gray-200 flex-shrink-0 transition-colors"
+            className="p-1 rounded-full hover:bg-gray-200 flex-shrink-0 transition-colors mt-0.5"
             aria-label={email.isStarred ? 'Unstar' : 'Star'}
           >
             <Star size={18} className={email.isStarred ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'} />
