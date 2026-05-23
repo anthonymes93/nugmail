@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { collection, onSnapshot, setDoc, deleteDoc, doc } from 'firebase/firestore'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth, db } from '../lib/firebase'
 import type { ParsedEmail } from '../types/gmail'
-
-const STORAGE_KEY = 'nugmail_pinned_v1'
 
 export interface PinnedEmail {
   type: 'email'
@@ -27,48 +28,49 @@ interface PinnedContextType {
   isPinned: (type: 'email' | 'quote', id: string | number) => boolean
 }
 
-function load(): PinnedItem[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as PinnedItem[]
-  } catch {
-    return []
-  }
-}
-
-function save(items: PinnedItem[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-}
-
 const PinnedContext = createContext<PinnedContextType | null>(null)
 
 export function PinnedProvider({ children }: { children: ReactNode }) {
-  const [pinned, setPinned] = useState<PinnedItem[]>(load)
+  const [pinned, setPinned] = useState<PinnedItem[]>([])
+  const [uid, setUid] = useState<string | null>(auth.currentUser?.uid ?? null)
+
+  // Track Firebase Auth state (Firebase restores this from IndexedDB on refresh)
+  useEffect(() => {
+    return onAuthStateChanged(auth, (user) => setUid(user?.uid ?? null))
+  }, [])
+
+  // Real-time Firestore listener — reconnects whenever uid changes
+  useEffect(() => {
+    if (!uid) { setPinned([]); return }
+
+    const ref = collection(db, 'users', uid, 'pinned')
+    return onSnapshot(
+      ref,
+      (snap) => {
+        const items = snap.docs.map((d) => d.data() as PinnedItem)
+        items.sort((a, b) => b.pinnedAt - a.pinnedAt)
+        setPinned(items)
+      },
+      (err) => console.error('Firestore pinned error:', err)
+    )
+  }, [uid])
 
   const pinEmail = useCallback((email: ParsedEmail) => {
-    setPinned((prev) => {
-      if (prev.some((p) => p.type === 'email' && p.id === email.id)) return prev
-      const next: PinnedItem[] = [{ type: 'email', id: email.id, data: email, pinnedAt: Date.now() }, ...prev]
-      save(next)
-      return next
-    })
-  }, [])
+    if (!uid) return
+    const item: PinnedEmail = { type: 'email', id: email.id, data: email, pinnedAt: Date.now() }
+    setDoc(doc(db, 'users', uid, 'pinned', `email_${email.id}`), item).catch(console.error)
+  }, [uid])
 
   const pinQuote = useCallback((quote: { id: number; quote: string; author: string }) => {
-    setPinned((prev) => {
-      if (prev.some((p) => p.type === 'quote' && p.id === quote.id)) return prev
-      const next: PinnedItem[] = [{ type: 'quote', id: quote.id, data: quote, pinnedAt: Date.now() }, ...prev]
-      save(next)
-      return next
-    })
-  }, [])
+    if (!uid) return
+    const item: PinnedQuote = { type: 'quote', id: quote.id, data: quote, pinnedAt: Date.now() }
+    setDoc(doc(db, 'users', uid, 'pinned', `quote_${quote.id}`), item).catch(console.error)
+  }, [uid])
 
   const unpin = useCallback((type: 'email' | 'quote', id: string | number) => {
-    setPinned((prev) => {
-      const next = prev.filter((p) => !(p.type === type && p.id === id))
-      save(next)
-      return next
-    })
-  }, [])
+    if (!uid) return
+    deleteDoc(doc(db, 'users', uid, 'pinned', `${type}_${id}`)).catch(console.error)
+  }, [uid])
 
   const isPinned = useCallback(
     (type: 'email' | 'quote', id: string | number) =>
