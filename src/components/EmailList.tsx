@@ -1,5 +1,5 @@
 import { useSearchParams } from 'react-router-dom'
-import { RefreshCw, Loader2, Mail, Pin, GripVertical } from 'lucide-react'
+import { RefreshCw, Loader2, Mail, Pin } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -76,50 +76,27 @@ function QuoteDivider({ quote }: { quote?: Quote }) {
 function SortablePinnedItem({ item }: { item: PinnedItem }) {
   const { unpin } = usePinned()
   const sortableId = item.type === 'email' ? `email_${item.id}` : `quote_${item.id}`
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: sortableId })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sortableId })
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
-    position: 'relative' as const,
     zIndex: isDragging ? 10 : undefined,
+    touchAction: 'none' as const,
   }
 
   if (item.type === 'email') {
     return (
-      <div ref={setNodeRef} style={style}>
-        <div className="relative">
-          <EmailItem email={item.data} inPinnedSection />
-          {/* Drag handle — left edge, above the avatar */}
-          <div
-            ref={setActivatorNodeRef}
-            {...attributes}
-            {...listeners}
-            className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center touch-none cursor-grab active:cursor-grabbing"
-            aria-label="Drag to reorder"
-          >
-            <GripVertical size={15} className="text-amber-300" />
-          </div>
-        </div>
+      <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+        <EmailItem email={item.data} inPinnedSection />
       </div>
     )
   }
 
-  // Quote pinned item
   return (
-    <div ref={setNodeRef} style={style}>
-      <div className="relative flex items-center gap-3 px-3 py-2 border-b border-amber-100 bg-gradient-to-r from-amber-50/80 to-orange-50/80 select-none">
-        {/* Drag handle */}
-        <div
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
-          className="flex-shrink-0 touch-none cursor-grab active:cursor-grabbing p-1"
-          aria-label="Drag to reorder"
-        >
-          <GripVertical size={15} className="text-amber-300" />
-        </div>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <div className="flex items-center gap-3 px-3 py-2 border-b border-amber-100 bg-gradient-to-r from-amber-50/80 to-orange-50/80 select-none">
         <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-amber-400 to-orange-400 text-white text-base">
           ✦
         </div>
@@ -133,7 +110,7 @@ function SortablePinnedItem({ item }: { item: PinnedItem }) {
           </p>
         </div>
         <button
-          onClick={() => unpin('quote', item.id)}
+          onClick={(e) => { e.stopPropagation(); unpin('quote', item.id) }}
           className="p-1 rounded-full hover:bg-amber-200 flex-shrink-0 transition-colors"
           aria-label="Unpin"
         >
