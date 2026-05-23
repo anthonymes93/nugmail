@@ -105,7 +105,7 @@ export default function EmailDetail() {
         </div>
 
         {/* Email body */}
-        <div className="flex-1 overflow-auto px-4 pt-4 pb-32 max-w-3xl mx-auto w-full">
+        <div className="flex-1 overflow-auto px-4 pt-4 max-w-3xl mx-auto w-full" style={{ paddingBottom: 'calc(120px + env(safe-area-inset-bottom, 0px))' }}>
           <h1 className="text-xl font-normal text-gray-900 mb-4 leading-snug">{email.subject}</h1>
 
           <div className="flex items-start gap-3 mb-4">
@@ -144,7 +144,10 @@ export default function EmailDetail() {
         </div>
 
         {/* Reply bar */}
-        <div className="fixed bottom-0 left-0 right-0 md:relative bg-white border-t border-gray-200 px-4 py-3 flex gap-2">
+        <div
+          className="fixed left-0 right-0 md:relative md:bottom-auto bg-white border-t border-gray-200 px-4 py-3 flex gap-2"
+          style={{ bottom: 'calc(56px + env(safe-area-inset-bottom, 0px))' }}
+        >
           <button
             onClick={() => setReplyOpen(true)}
             className="flex items-center gap-2 border border-gray-300 rounded-full px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"

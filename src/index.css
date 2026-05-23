@@ -8,10 +8,30 @@
   padding: 0;
 }
 
+html {
+  /* Prevent rubber-band scroll on the page itself */
+  overscroll-behavior: none;
+  /* Use dynamic viewport height so Safari toolbar doesn't cut layout */
+  height: 100%;
+}
+
 body {
   font-family: 'Google Sans', Roboto, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   background-color: #f6f8fc;
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+#root {
+  height: 100%;
+}
+
+/* Smooth momentum scrolling on iOS for all scroll containers */
+.overflow-y-auto,
+.overflow-auto {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 ::-webkit-scrollbar {
@@ -30,10 +50,6 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #bdc1c6;
-}
-
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 iframe {

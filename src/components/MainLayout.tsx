@@ -12,7 +12,7 @@ export default function MainLayout() {
   const [composeOpen, setComposeOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-g-bg">
+    <div className="flex overflow-hidden bg-g-bg" style={{ height: '100dvh' }}>
       {/* Sidebar */}
       <Sidebar
         open={sidebarOpen}
