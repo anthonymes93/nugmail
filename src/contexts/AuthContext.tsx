@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { signOut } from 'firebase/auth'
+import { auth } from '../lib/firebase'
 import type { Account, User } from '../types/gmail'
 
 const STORAGE_KEY = 'nugmail_accounts_v1'
@@ -60,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearAll = useCallback(() => {
     sessionStorage.removeItem(STORAGE_KEY)
     setAccounts([])
+    signOut(auth).catch(console.error)
   }, [])
 
   const getToken = useCallback(
