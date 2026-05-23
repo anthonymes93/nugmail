@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { collection, onSnapshot, setDoc, deleteDoc, doc } from 'firebase/firestore'
-import { onAuthStateChanged } from 'firebase/auth'
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
 import { auth, db } from '../lib/firebase'
 import type { ParsedEmail } from '../types/gmail'
 
@@ -33,6 +33,15 @@ const PinnedContext = createContext<PinnedContextType | null>(null)
 export function PinnedProvider({ children }: { children: ReactNode }) {
   const [pinned, setPinned] = useState<PinnedItem[]>([])
   const [uid, setUid] = useState<string | null>(auth.currentUser?.uid ?? null)
+
+  // Ensure there is always a Firebase session for Firestore writes.
+  // On refresh, Firebase restores an existing anonymous session from IndexedDB.
+  // If nothing is found (first visit or cleared storage), create one now.
+  useEffect(() => {
+    auth.authStateReady().then(() => {
+      if (!auth.currentUser) signInAnonymously(auth).catch(console.error)
+    })
+  }, [])
 
   // Track Firebase Auth state (Firebase restores this from IndexedDB on refresh)
   useEffect(() => {
