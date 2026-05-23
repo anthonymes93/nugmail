@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { collection, onSnapshot, setDoc, deleteDoc, doc } from 'firebase/firestore'
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth'
 import { auth, db } from '../lib/firebase'
+import { useAuth } from './AuthContext'
 import type { ParsedEmail } from '../types/gmail'
 
 export interface PinnedEmail {
@@ -32,25 +33,31 @@ const PinnedContext = createContext<PinnedContextType | null>(null)
 
 export function PinnedProvider({ children }: { children: ReactNode }) {
   const [pinned, setPinned] = useState<PinnedItem[]>([])
-  const [uid, setUid] = useState<string | null>(null)
+  const [firebaseReady, setFirebaseReady] = useState(false)
+  const { activeAccounts } = useAuth()
 
-  // Track auth state and ensure an anonymous Firebase session always exists
+  // Use the primary Gmail account email as the stable cross-device key
+  const primaryEmail = activeAccounts[0]?.user.email ?? null
+  // Encode email so it's safe as a Firestore document ID
+  const docKey = primaryEmail ? encodeURIComponent(primaryEmail) : null
+
+  // Ensure anonymous Firebase session exists (required to write to Firestore)
   useEffect(() => {
     return onAuthStateChanged(auth, (user) => {
       if (user) {
-        setUid(user.uid)
+        setFirebaseReady(true)
       } else {
-        setUid(null)
+        setFirebaseReady(false)
         signInAnonymously(auth).catch(console.error)
       }
     })
   }, [])
 
-  // Real-time Firestore listener — reconnects whenever uid changes
+  // Real-time Firestore listener keyed by email — same data on all devices
   useEffect(() => {
-    if (!uid) { setPinned([]); return }
+    if (!docKey || !firebaseReady) { setPinned([]); return }
 
-    const ref = collection(db, 'users', uid, 'pinned')
+    const ref = collection(db, 'users', docKey, 'pinned')
     return onSnapshot(
       ref,
       (snap) => {
@@ -60,26 +67,25 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
       },
       (err) => console.error('Firestore pinned error:', err)
     )
-  }, [uid])
+  }, [docKey, firebaseReady])
 
   const pinEmail = useCallback((email: ParsedEmail) => {
-    if (!uid) return
+    if (!docKey || !firebaseReady) return
     const item: PinnedEmail = { type: 'email', id: email.id, data: email, pinnedAt: Date.now() }
-    // JSON round-trip strips undefined fields which Firestore rejects
     const sanitized = JSON.parse(JSON.stringify(item))
-    setDoc(doc(db, 'users', uid, 'pinned', `email_${email.id}`), sanitized).catch(console.error)
-  }, [uid])
+    setDoc(doc(db, 'users', docKey, 'pinned', `email_${email.id}`), sanitized).catch(console.error)
+  }, [docKey, firebaseReady])
 
   const pinQuote = useCallback((quote: { id: number; quote: string; author: string }) => {
-    if (!uid) return
+    if (!docKey || !firebaseReady) return
     const item: PinnedQuote = { type: 'quote', id: quote.id, data: quote, pinnedAt: Date.now() }
-    setDoc(doc(db, 'users', uid, 'pinned', `quote_${quote.id}`), item).catch(console.error)
-  }, [uid])
+    setDoc(doc(db, 'users', docKey, 'pinned', `quote_${quote.id}`), item).catch(console.error)
+  }, [docKey, firebaseReady])
 
   const unpin = useCallback((type: 'email' | 'quote', id: string | number) => {
-    if (!uid) return
-    deleteDoc(doc(db, 'users', uid, 'pinned', `${type}_${id}`)).catch(console.error)
-  }, [uid])
+    if (!docKey || !firebaseReady) return
+    deleteDoc(doc(db, 'users', docKey, 'pinned', `${type}_${id}`)).catch(console.error)
+  }, [docKey, firebaseReady])
 
   const isPinned = useCallback(
     (type: 'email' | 'quote', id: string | number) =>
