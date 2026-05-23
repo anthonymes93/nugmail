@@ -4,11 +4,16 @@ function send(res, status, body) {
 
 function cleanLabel(value, fallback) {
   const label = String(value ?? '')
-    .replace(/[^a-z0-9]/gi, '')
-    .slice(0, 12)
+    .replace(/[^a-z0-9 ]/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .slice(0, 3)
+    .join(' ')
+    .slice(0, 24)
 
   if (label) return label
-  return String(fallback ?? 'Goal').replace(/[^a-z0-9]/gi, '').slice(0, 12) || 'Goal'
+  return String(fallback ?? 'Goal').replace(/[^a-z0-9 ]/gi, '').trim().slice(0, 24) || 'Goal'
 }
 
 export default async function handler(req, res) {
@@ -50,7 +55,7 @@ export default async function handler(req, res) {
             content: [
               {
                 type: 'input_text',
-                text: 'Create one short display word for each user goal. Use one word only, no spaces or punctuation. Prefer a concrete noun or verb that captures the goal.',
+                text: 'Create one tiny display label for each user goal. Use 2 to 3 short words when helpful. No punctuation. Keep each label under 24 characters and make it more descriptive than a single vague word.',
               },
             ],
           },
