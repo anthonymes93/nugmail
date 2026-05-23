@@ -22,7 +22,7 @@ export interface PinnedQuote {
 export interface PinnedNote {
   type: 'note'
   id: string
-  data: { text: string }
+  data: { text: string; dueAt?: string }
   pinnedAt: number
 }
 
@@ -32,7 +32,7 @@ interface PinnedContextType {
   pinned: PinnedItem[]
   pinEmail: (email: ParsedEmail) => void
   pinQuote: (quote: { id: number; quote: string; author: string }) => void
-  pinNote: (text: string) => void
+  pinNote: (text: string, dueAt?: string) => void
   unpin: (type: 'email' | 'quote' | 'note', id: string | number) => void
   isPinned: (type: 'email' | 'quote' | 'note', id: string | number) => boolean
   reorder: (items: PinnedItem[]) => void
@@ -86,10 +86,10 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
     setDoc(doc(db, 'users', docKey, 'pinned', `quote_${quote.id}`), item).catch(console.error)
   }, [docKey, firebaseReady])
 
-  const pinNote = useCallback((text: string) => {
+  const pinNote = useCallback((text: string, dueAt?: string) => {
     if (!docKey || !firebaseReady) return
     const id = Date.now().toString()
-    const item: PinnedNote = { type: 'note', id, data: { text }, pinnedAt: Date.now() }
+    const item: PinnedNote = { type: 'note', id, data: dueAt ? { text, dueAt } : { text }, pinnedAt: Date.now() }
     setDoc(doc(db, 'users', docKey, 'pinned', `note_${id}`), item).catch(console.error)
   }, [docKey, firebaseReady])
 

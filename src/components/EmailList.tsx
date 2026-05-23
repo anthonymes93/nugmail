@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSearchParams, useLocation } from 'react-router-dom'
-import { RefreshCw, Loader2, Mail, Pin, SquarePen, X } from 'lucide-react'
+import { CalendarClock, RefreshCw, Loader2, Mail, Pin, SquarePen, X } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -76,6 +76,18 @@ function QuoteDivider({ quote }: { quote?: Quote }) {
 
 type EmailOrQuote = import('../contexts/PinnedContext').PinnedEmail | import('../contexts/PinnedContext').PinnedQuote
 
+function formatNoteDueAt(dueAt: string) {
+  const date = new Date(dueAt)
+  if (Number.isNaN(date.getTime())) return null
+
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 function SortablePinnedItem({ item }: { item: EmailOrQuote }) {
   const { unpin } = usePinned()
   const sortableId = item.type === 'email' ? `email_${item.id}` : `quote_${item.id}`
@@ -128,6 +140,7 @@ function PinnedSection() {
   const { pinned, reorder, pinNote, unpin } = usePinned()
   const [noteOpen, setNoteOpen] = useState(false)
   const [noteText, setNoteText] = useState('')
+  const [noteDueAt, setNoteDueAt] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const sensors = useSensors(
@@ -142,7 +155,18 @@ function PinnedSection() {
 
   const handleNoteSubmit = () => {
     const text = noteText.trim()
-    if (text) { pinNote(text); setNoteText(''); setNoteOpen(false) }
+    if (text) {
+      pinNote(text, noteDueAt ? new Date(noteDueAt).toISOString() : undefined)
+      setNoteText('')
+      setNoteDueAt('')
+      setNoteOpen(false)
+    }
+  }
+
+  const handleNoteCancel = () => {
+    setNoteOpen(false)
+    setNoteText('')
+    setNoteDueAt('')
   }
 
   const ids = pinned.map((item) =>
@@ -167,7 +191,17 @@ function PinnedSection() {
             <SquarePen size={15} className="text-amber-500" />
           </button>
         </div>
-        {noteOpen && <NoteCompose textareaRef={textareaRef} value={noteText} onChange={setNoteText} onSubmit={handleNoteSubmit} onCancel={() => { setNoteOpen(false); setNoteText('') }} />}
+        {noteOpen && (
+          <NoteCompose
+            textareaRef={textareaRef}
+            value={noteText}
+            dueAt={noteDueAt}
+            onChange={setNoteText}
+            onDueAtChange={setNoteDueAt}
+            onSubmit={handleNoteSubmit}
+            onCancel={handleNoteCancel}
+          />
+        )}
       </div>
     )
   }
@@ -182,7 +216,17 @@ function PinnedSection() {
         </button>
       </div>
 
-      {noteOpen && <NoteCompose textareaRef={textareaRef} value={noteText} onChange={setNoteText} onSubmit={handleNoteSubmit} onCancel={() => { setNoteOpen(false); setNoteText('') }} />}
+      {noteOpen && (
+        <NoteCompose
+          textareaRef={textareaRef}
+          value={noteText}
+          dueAt={noteDueAt}
+          onChange={setNoteText}
+          onDueAtChange={setNoteDueAt}
+          onSubmit={handleNoteSubmit}
+          onCancel={handleNoteCancel}
+        />
+      )}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
@@ -199,10 +243,12 @@ function PinnedSection() {
   )
 }
 
-function NoteCompose({ textareaRef, value, onChange, onSubmit, onCancel }: {
+function NoteCompose({ textareaRef, value, dueAt, onChange, onDueAtChange, onSubmit, onCancel }: {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
   value: string
+  dueAt: string
   onChange: (v: string) => void
+  onDueAtChange: (v: string) => void
   onSubmit: () => void
   onCancel: () => void
 }) {
@@ -217,6 +263,16 @@ function NoteCompose({ textareaRef, value, onChange, onSubmit, onCancel }: {
         rows={2}
         className="w-full text-sm text-gray-800 bg-white border border-amber-200 rounded-lg px-3 py-2 resize-none outline-none focus:ring-2 focus:ring-amber-300 placeholder-gray-400"
       />
+      <label className="mt-1.5 flex items-center gap-2 text-xs text-amber-700">
+        <CalendarClock size={14} className="text-amber-500 flex-shrink-0" />
+        <span className="font-medium flex-shrink-0">Due</span>
+        <input
+          type="datetime-local"
+          value={dueAt}
+          onChange={(e) => onDueAtChange(e.target.value)}
+          className="min-w-0 flex-1 text-xs text-gray-700 bg-white border border-amber-200 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-amber-300"
+        />
+      </label>
       <div className="flex justify-end gap-2 mt-1.5">
         <button onClick={onCancel} className="flex items-center gap-1 text-xs text-gray-500 px-2 py-1 rounded hover:bg-amber-100">
           <X size={12} /> Cancel
@@ -233,6 +289,7 @@ function SortableNoteItem({ item, onUnpin }: { item: import('../contexts/PinnedC
   const sortableId = `note_${item.id}`
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sortableId })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, zIndex: isDragging ? 10 : undefined, touchAction: 'none' as const }
+  const dueAt = item.data.dueAt ? formatNoteDueAt(item.data.dueAt) : null
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
@@ -243,6 +300,12 @@ function SortableNoteItem({ item, onUnpin }: { item: import('../contexts/PinnedC
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold text-amber-500 mb-0.5">Note</p>
           <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{item.data.text}</p>
+          {dueAt && (
+            <p className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-600">
+              <CalendarClock size={12} className="flex-shrink-0" />
+              <span>Due {dueAt}</span>
+            </p>
+          )}
         </div>
         <button onClick={onUnpin} className="p-1 rounded-full hover:bg-amber-200 flex-shrink-0 transition-colors mt-0.5" aria-label="Unpin">
           <Pin size={15} className="fill-amber-400 text-amber-400" />
