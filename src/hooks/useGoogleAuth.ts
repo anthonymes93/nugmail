@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import type { User } from '../types/gmail'
 
 export function useGoogleAuth() {
-  const { addAccount, accounts } = useAuth()
+  const { addAccount } = useAuth()
 
   const login = useGoogleLogin({
     scope: 'https://mail.google.com/',
