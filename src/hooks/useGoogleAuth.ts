@@ -17,15 +17,15 @@ export function useGoogleAuth() {
       const profile = (await res.json()) as { email: string; name: string; picture: string }
       const user: User = { email: profile.email, name: profile.name, picture: profile.picture }
 
-      // Sign into Firebase for the primary account only (first sign-in)
-      // Firebase Auth persists across refreshes via IndexedDB automatically
-      if (accounts.length === 0 && !auth.currentUser) {
+      // Sign into Firebase whenever we don't already have an active Firebase session.
+      // Firebase persists its own auth state via IndexedDB, so this is usually a no-op
+      // on refresh. It only runs when Firebase session is missing or expired.
+      if (!auth.currentUser) {
         try {
           const credential = GoogleAuthProvider.credential(null, tokenResponse.access_token)
           await signInWithCredential(auth, credential)
         } catch (err) {
-          // Non-fatal — app works without Firebase Auth, just no Firestore
-          console.warn('Firebase sign-in failed:', err)
+          console.error('Firebase sign-in failed:', err)
         }
       }
 
