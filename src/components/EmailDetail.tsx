@@ -5,9 +5,48 @@ import {
   Reply, ReplyAll, Forward, Loader2, Mail
 } from 'lucide-react'
 import { useEmailDetail, useEmailActions } from '../hooks/useEmailDetail'
+import { useGoalRelevance } from '../hooks/useGoalRelevance'
 import { formatFullDate, getInitials, getAvatarColor } from '../utils/formatters'
+import { useGoals, type Goal } from '../contexts/GoalsContext'
 import ComposeModal from './ComposeModal'
 import DOMPurify from 'dompurify'
+
+const GOAL_COLORS = ['#1a73e8', '#16a34a', '#eab308', '#dc2626', '#9333ea', '#0891b2', '#f97316', '#db2777']
+
+function GoalRelevanceBar({ goals, scores, isLoading }: {
+  goals: Goal[]
+  scores: { goalId: string; score: number }[] | undefined
+  isLoading: boolean
+}) {
+  const activeGoals = goals.filter((goal) => !goal.completed)
+  const scoreByGoal = new Map((scores ?? []).map((score) => [score.goalId, score.score]))
+
+  if (activeGoals.length === 0) {
+    return <div className="h-2 w-28 rounded-full bg-gray-100" aria-label="No active goals" />
+  }
+
+  return (
+    <div className="flex items-center gap-1 w-36 sm:w-52" aria-label="Goal relevance">
+      {activeGoals.map((goal, index) => {
+        const score = isLoading ? 0 : Math.max(0, Math.min(100, scoreByGoal.get(goal.id) ?? 0))
+        const color = GOAL_COLORS[index % GOAL_COLORS.length]
+
+        return (
+          <div
+            key={goal.id}
+            className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100"
+            title={`${goal.text}: ${score}% relevant`}
+          >
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${isLoading ? 'animate-pulse' : ''}`}
+              style={{ width: `${score}%`, backgroundColor: color }}
+            />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function EmailDetail() {
   const { messageId } = useParams<{ messageId: string }>()
@@ -17,6 +56,8 @@ export default function EmailDetail() {
 
   const { data: email, isLoading, isError } = useEmailDetail(messageId, accountEmail)
   const { star, archive, trash } = useEmailActions()
+  const { goals } = useGoals()
+  const relevance = useGoalRelevance(email, goals)
   const [replyOpen, setReplyOpen] = useState(false)
   const [showMore, setShowMore] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -62,6 +103,9 @@ export default function EmailDetail() {
       <div className="flex flex-col min-h-full">
         {/* Toolbar */}
         <div className="flex items-center gap-1 px-2 py-1 border-b border-gray-100">
+          <div className="px-2">
+            <GoalRelevanceBar goals={goals} scores={relevance.data} isLoading={relevance.isLoading} />
+          </div>
           <div className="flex-1" />
           <button
             onClick={() => star.mutate({ id: email.id, starred: !email.isStarred, accountEmail: email.accountEmail })}
