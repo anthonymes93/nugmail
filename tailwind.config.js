@@ -9,6 +9,12 @@ export default {
         'g-hover': '#e8f0fe',
         'g-selected': '#d3e3fd',
       },
+      keyframes: {
+        'slide-up': { from: { transform: 'translateY(100%)' }, to: { transform: 'translateY(0)' } },
+      },
+      animation: {
+        'slide-up': 'slide-up 0.25s ease-out',
+      },
     },
   },
   plugins: [],
