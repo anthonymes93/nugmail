@@ -15,26 +15,23 @@ interface EmailItemProps {
 
 const SWIPE_THRESHOLD = 80
 const LONG_PRESS_MS = 3000
+const DOUBLE_TAP_MS = 300
 
 const MENU_ITEMS = [
-  { icon: Reply,      label: 'Reply' },
-  { icon: Forward,    label: 'Forward' },
-  { icon: MailOpen,   label: 'Mark as unread' },
-  { icon: Archive,    label: 'Archive' },
-  { icon: FolderInput,label: 'Move to' },
-  { icon: Tag,        label: 'Label as' },
-  { icon: Ban,        label: 'Block sender' },
+  { icon: Reply,       label: 'Reply' },
+  { icon: Forward,     label: 'Forward' },
+  { icon: MailOpen,    label: 'Mark as unread' },
+  { icon: Archive,     label: 'Archive' },
+  { icon: FolderInput, label: 'Move to' },
+  { icon: Tag,         label: 'Label as' },
+  { icon: Ban,         label: 'Block sender' },
 ]
 
 function ContextMenu({ email, onClose }: { email: ParsedEmail; onClose: () => void }) {
   return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-
-      {/* Sheet */}
-      <div className="relative bg-white rounded-t-2xl shadow-xl pb-safe overflow-hidden animate-slide-up">
-        {/* Email preview header */}
+      <div className="relative bg-white rounded-t-2xl shadow-xl overflow-hidden animate-slide-up">
         <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0 ${getAvatarColor(email.fromEmail)}`}>
             {getInitials(email.fromName)}
@@ -47,8 +44,6 @@ function ContextMenu({ email, onClose }: { email: ParsedEmail; onClose: () => vo
             <X size={18} className="text-gray-400" />
           </button>
         </div>
-
-        {/* Menu items */}
         {MENU_ITEMS.map(({ icon: Icon, label }) => (
           <button
             key={label}
@@ -59,7 +54,6 @@ function ContextMenu({ email, onClose }: { email: ParsedEmail; onClose: () => vo
             <span className="text-sm text-gray-800">{label}</span>
           </button>
         ))}
-
         <div className="h-6" />
       </div>
     </div>,
@@ -76,7 +70,6 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
   const pinned = isPinned('email', email.id)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  // Swipe + long-press state in refs (no re-renders during gesture)
   const contentRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
@@ -84,13 +77,19 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
   const isHorizontal = useRef<boolean | null>(null)
   const wasSwipe = useRef(false)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastTapTime = useRef(0)
 
+  const openEmail = () => {
+    if (email.isUnread) markRead.mutate({ id: email.id, read: true, accountEmail: email.accountEmail })
+    navigate(`/email/${email.id}?acc=${encodeURIComponent(email.accountEmail)}`)
+  }
+
   const cancelLongPress = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
-    }
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
+  }
+  const cancelSingleTap = () => {
+    if (singleTapTimer.current) { clearTimeout(singleTapTimer.current); singleTapTimer.current = null }
   }
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -103,8 +102,9 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
 
     longPressTimer.current = setTimeout(() => {
       cancelLongPress()
-      wasSwipe.current = true // prevent click after menu opens
-      // Snap back if mid-swipe
+      cancelSingleTap()
+      lastTapTime.current = 0
+      wasSwipe.current = true
       if (contentRef.current) {
         contentRef.current.style.transition = 'transform 0.2s ease'
         contentRef.current.style.transform = 'translateX(0)'
@@ -118,10 +118,8 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
     const dx = e.touches[0].clientX - touchStartX.current
     const dy = e.touches[0].clientY - touchStartY.current
 
-    // Cancel long press on any real movement
     if (Math.abs(dx) > 8 || Math.abs(dy) > 8) cancelLongPress()
-
-    if (inPinnedSection) return // no swipe in pinned section
+    if (inPinnedSection) return
 
     if (isHorizontal.current === null) {
       if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return
@@ -136,44 +134,46 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
   const handleTouchEnd = () => {
     cancelLongPress()
     if (!contentRef.current) return
-    const dx = currentX.current
 
-    if (!inPinnedSection && isHorizontal.current && Math.abs(dx) >= SWIPE_THRESHOLD) {
+    const dx = currentX.current
+    const wasHorizontal = isHorizontal.current === true
+    isHorizontal.current = null
+    currentX.current = 0
+
+    if (!inPinnedSection && wasHorizontal && Math.abs(dx) >= SWIPE_THRESHOLD) {
+      // Full swipe → archive
       wasSwipe.current = true
       const dir = dx > 0 ? 1 : -1
       contentRef.current.style.transition = 'transform 0.2s ease, opacity 0.2s ease'
       contentRef.current.style.transform = `translateX(${dir * 110}vw)`
       contentRef.current.style.opacity = '0'
-      setTimeout(() => {
-        archive.mutate({ id: email.id, accountEmail: email.accountEmail })
-      }, 180)
-    } else {
+      setTimeout(() => archive.mutate({ id: email.id, accountEmail: email.accountEmail }), 180)
+    } else if (wasHorizontal) {
+      // Short swipe → snap back
       contentRef.current.style.transition = 'transform 0.2s ease'
       contentRef.current.style.transform = 'translateX(0)'
-    }
-
-    isHorizontal.current = null
-    currentX.current = 0
-
-    // Double-tap detection
-    if (!wasSwipe.current && !isHorizontal.current) {
+    } else {
+      // Tap — check for double-tap; delay single-tap navigation
+      wasSwipe.current = true // suppress onClick so we control navigation timing
       const now = Date.now()
-      if (now - lastTapTime.current < 300) {
+      if (now - lastTapTime.current < DOUBLE_TAP_MS) {
+        cancelSingleTap()
         lastTapTime.current = 0
-        wasSwipe.current = true // suppress the click
         setMenuOpen(true)
       } else {
         lastTapTime.current = now
+        singleTapTimer.current = setTimeout(() => {
+          singleTapTimer.current = null
+          openEmail()
+        }, DOUBLE_TAP_MS)
       }
     }
   }
 
+  // Fallback for mouse clicks (desktop)
   const handleClick = () => {
     if (wasSwipe.current) return
-    if (email.isUnread) {
-      markRead.mutate({ id: email.id, read: true, accountEmail: email.accountEmail })
-    }
-    navigate(`/email/${email.id}?acc=${encodeURIComponent(email.accountEmail)}`)
+    openEmail()
   }
 
   const handleStar = (e: React.MouseEvent) => {
@@ -194,7 +194,6 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
   return (
     <>
       <div className="relative overflow-hidden border-b border-gray-100">
-        {/* Swipe background — hidden for pinned items */}
         {!inPinnedSection && (
           <div className="absolute inset-0 bg-green-500 flex items-center justify-between px-5">
             <div className="flex items-center gap-2 text-white">
@@ -208,7 +207,6 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
           </div>
         )}
 
-        {/* Email row */}
         <div
           ref={contentRef}
           onClick={handleClick}
@@ -220,7 +218,6 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
             ${inPinnedSection ? 'bg-amber-50/60 hover:bg-amber-50' : email.isUnread ? 'bg-white hover:bg-gray-50' : 'bg-g-bg hover:bg-gray-100'}
           `}
         >
-          {/* Sender avatar */}
           <div className="relative flex-shrink-0">
             <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-medium ${senderColor}`}>
               {initials}
@@ -235,7 +232,6 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
             )}
           </div>
 
-          {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <span className={`text-sm truncate ${email.isUnread ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
@@ -258,7 +254,6 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
             )}
           </div>
 
-          {/* Pin */}
           <button
             onClick={handlePin}
             className="p-1 rounded-full hover:bg-gray-200 flex-shrink-0 transition-colors"
@@ -267,7 +262,6 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
             <Pin size={15} className={pinned ? 'fill-amber-400 text-amber-400' : 'text-gray-300'} />
           </button>
 
-          {/* Star */}
           <button
             onClick={handleStar}
             className="p-1 rounded-full hover:bg-gray-200 flex-shrink-0 transition-colors"
