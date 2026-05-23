@@ -6,15 +6,15 @@ export interface GoalLabel {
   label: string
 }
 
-const CACHE_PREFIX = 'nugmail_goal_label_v3'
+const CACHE_PREFIX = 'nugmail_goal_label_v4'
 
 function fallbackLabel(goal: Goal) {
   return goal.text
     .split(/\s+/)
-    .slice(0, 5)
+    .slice(0, 4)
     .join(' ')
     .replace(/[^a-z0-9 ]/gi, '')
-    .slice(0, 40) || 'Goal'
+    .slice(0, 48) || 'Goal'
 }
 
 function cacheKey(goal: Goal) {

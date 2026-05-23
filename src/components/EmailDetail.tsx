@@ -17,10 +17,10 @@ const GOAL_COLORS = ['#1a73e8', '#16a34a', '#eab308', '#dc2626', '#9333ea', '#08
 function fallbackGoalLabel(goal: Goal) {
   return goal.text
     .split(/\s+/)
-    .slice(0, 5)
+    .slice(0, 4)
     .join(' ')
     .replace(/[^a-z0-9 ]/gi, '')
-    .slice(0, 40) || 'Goal'
+    .slice(0, 48) || 'Goal'
 }
 
 function GoalRelevanceBar({ goals, scores, labels, isLoading }: {
@@ -38,7 +38,7 @@ function GoalRelevanceBar({ goals, scores, labels, isLoading }: {
   }
 
   return (
-    <div className="flex items-start gap-1 w-36 sm:w-52" aria-label="Goal relevance">
+    <div className="flex items-start gap-1.5 w-52 sm:w-72" aria-label="Goal relevance">
       {activeGoals.map((goal, index) => {
         const score = isLoading ? 0 : Math.max(0, Math.min(100, scoreByGoal.get(goal.id) ?? 0))
         const color = GOAL_COLORS[index % GOAL_COLORS.length]
@@ -56,7 +56,7 @@ function GoalRelevanceBar({ goals, scores, labels, isLoading }: {
                 style={{ width: `${score}%`, backgroundColor: color }}
               />
             </div>
-            <div className="mt-0.5 truncate whitespace-nowrap text-center text-[7px] leading-none text-gray-500">
+            <div className="mt-0.5 overflow-hidden whitespace-nowrap text-center text-[8px] leading-none text-gray-500">
               {label}
             </div>
           </div>
@@ -122,7 +122,7 @@ export default function EmailDetail() {
       <div className="flex flex-col min-h-full">
         {/* Toolbar */}
         <div className="flex items-center gap-1 px-2 py-1 border-b border-gray-100">
-          <div className="px-2">
+          <div className="px-2 flex-shrink-0">
             <GoalRelevanceBar
               goals={goals}
               scores={relevance.data}
