@@ -34,18 +34,14 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
   const [pinned, setPinned] = useState<PinnedItem[]>([])
   const [uid, setUid] = useState<string | null>(null)
 
-  // Single effect: track auth state and ensure anonymous session exists
+  // Track auth state and ensure an anonymous Firebase session always exists
   useEffect(() => {
     return onAuthStateChanged(auth, (user) => {
-      console.log('[PIN] auth state:', user ? `uid=${user.uid} anon=${user.isAnonymous}` : 'null')
       if (user) {
         setUid(user.uid)
       } else {
         setUid(null)
-        console.log('[PIN] no user — signing in anonymously')
-        signInAnonymously(auth)
-          .then(() => console.log('[PIN] anonymous sign-in OK'))
-          .catch((err) => console.error('[PIN] anonymous sign-in FAILED:', err))
+        signInAnonymously(auth).catch(console.error)
       }
     })
   }, [])
@@ -53,28 +49,25 @@ export function PinnedProvider({ children }: { children: ReactNode }) {
   // Real-time Firestore listener — reconnects whenever uid changes
   useEffect(() => {
     if (!uid) { setPinned([]); return }
-    console.log('[PIN] attaching Firestore listener for uid:', uid)
 
     const ref = collection(db, 'users', uid, 'pinned')
     return onSnapshot(
       ref,
       (snap) => {
-        console.log('[PIN] snapshot received, docs:', snap.docs.length)
         const items = snap.docs.map((d) => d.data() as PinnedItem)
         items.sort((a, b) => b.pinnedAt - a.pinnedAt)
         setPinned(items)
       },
-      (err) => console.error('[PIN] Firestore snapshot error:', err)
+      (err) => console.error('Firestore pinned error:', err)
     )
   }, [uid])
 
   const pinEmail = useCallback((email: ParsedEmail) => {
-    console.log('[PIN] pinEmail uid:', uid)
     if (!uid) return
     const item: PinnedEmail = { type: 'email', id: email.id, data: email, pinnedAt: Date.now() }
-    setDoc(doc(db, 'users', uid, 'pinned', `email_${email.id}`), item)
-      .then(() => console.log('[PIN] setDoc OK'))
-      .catch((err) => console.error('[PIN] setDoc FAILED:', err))
+    // JSON round-trip strips undefined fields which Firestore rejects
+    const sanitized = JSON.parse(JSON.stringify(item))
+    setDoc(doc(db, 'users', uid, 'pinned', `email_${email.id}`), sanitized).catch(console.error)
   }, [uid])
 
   const pinQuote = useCallback((quote: { id: number; quote: string; author: string }) => {
