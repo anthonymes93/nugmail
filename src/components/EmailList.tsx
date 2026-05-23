@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { useSearchParams, useLocation } from 'react-router-dom'
 import { RefreshCw, Loader2, Mail, Pin, SquarePen, X } from 'lucide-react'
 import {
   DndContext,
@@ -254,11 +254,25 @@ function SortableNoteItem({ item, onUnpin }: { item: import('../contexts/PinnedC
 
 export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProps) {
   const [searchParams] = useSearchParams()
+  const { pathname } = useLocation()
   const searchQuery = isSearch ? (searchParams.get('q') ?? '') : undefined
 
   const { emails, isLoading, isRefetching, isError, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } =
     useEmailList(labelId, searchQuery)
   const { data: quotes } = useQuotes()
+
+  // Restore scroll position when returning from email detail
+  useEffect(() => {
+    if (emails.length === 0) return
+    const key = `scroll_${pathname}`
+    const saved = sessionStorage.getItem(key)
+    if (!saved) return
+    sessionStorage.removeItem(key)
+    requestAnimationFrame(() => {
+      const el = document.getElementById('mail-scroll')
+      if (el) el.scrollTop = parseInt(saved, 10)
+    })
+  }, [emails.length, pathname])
 
   const title = isSearch ? `Search: "${searchQuery}"` : (LABEL_NAMES[labelId] ?? labelId)
 

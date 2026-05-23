@@ -89,6 +89,8 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
   const lastTapTime = useRef(0)
 
   const openEmail = () => {
+    const scrollEl = document.getElementById('mail-scroll')
+    if (scrollEl) sessionStorage.setItem(`scroll_${window.location.pathname}`, String(scrollEl.scrollTop))
     if (email.isUnread) markRead.mutate({ id: email.id, read: true, accountEmail: email.accountEmail })
     navigate(`/email/${email.id}?acc=${encodeURIComponent(email.accountEmail)}`)
   }
