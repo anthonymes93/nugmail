@@ -28,9 +28,16 @@ const MENU_ITEMS = [
 ]
 
 function ContextMenu({ email, onClose }: { email: ParsedEmail; onClose: () => void }) {
+  const openedAt = useRef(Date.now())
+
+  const handleBackdropClick = () => {
+    if (Date.now() - openedAt.current < 350) return
+    onClose()
+  }
+
   return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40" onClick={handleBackdropClick} />
       <div className="relative bg-white rounded-t-2xl shadow-xl overflow-hidden animate-slide-up">
         <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0 ${getAvatarColor(email.fromEmail)}`}>
