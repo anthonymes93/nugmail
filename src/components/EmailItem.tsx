@@ -84,6 +84,7 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
   const isHorizontal = useRef<boolean | null>(null)
   const wasSwipe = useRef(false)
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longPressActivated = useRef(false)
   const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastTapTime = useRef(0)
 
@@ -105,12 +106,14 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
     currentX.current = 0
     isHorizontal.current = null
     wasSwipe.current = false
+    longPressActivated.current = false
     if (contentRef.current) contentRef.current.style.transition = 'none'
 
     longPressTimer.current = setTimeout(() => {
       cancelLongPress()
       cancelSingleTap()
       lastTapTime.current = 0
+      longPressActivated.current = true
       wasSwipe.current = true
       if (contentRef.current) {
         contentRef.current.style.transition = 'transform 0.2s ease'
@@ -160,6 +163,9 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
       contentRef.current.style.transition = 'transform 0.2s ease'
       contentRef.current.style.transform = 'translateX(0)'
     } else {
+      // If long press already showed the menu, ignore the finger-lift entirely
+      if (longPressActivated.current) { longPressActivated.current = false; return }
+
       // Tap — check for double-tap; delay single-tap navigation
       wasSwipe.current = true // suppress onClick so we control navigation timing
       const now = Date.now()
