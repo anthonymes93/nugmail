@@ -7,6 +7,7 @@ import EmailList from './EmailList'
 import EmailDetail from './EmailDetail'
 import ComposeModal from './ComposeModal'
 import HottPage from './HottPage'
+import GoalsPage from './GoalsPage'
 
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -33,6 +34,7 @@ export default function MainLayout() {
             <Route path="/sent" element={<EmailList labelId="SENT" />} />
             <Route path="/drafts" element={<EmailList labelId="DRAFT" />} />
             <Route path="/hott" element={<HottPage />} />
+            <Route path="/goals" element={<GoalsPage />} />
             <Route path="/spam" element={<EmailList labelId="SPAM" />} />
             <Route path="/trash" element={<EmailList labelId="TRASH" />} />
             <Route path="/search" element={<EmailList isSearch />} />

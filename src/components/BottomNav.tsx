@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom'
-import { Inbox, Star, Send, Flame, Mail } from 'lucide-react'
+import { Inbox, Star, Target, Flame, Mail } from 'lucide-react'
 
 const NAV_ITEMS = [
   { to: '/inbox', label: 'Inbox', icon: Inbox },
   { to: '/starred', label: 'Starred', icon: Star },
-  { to: '/sent', label: 'Sent', icon: Send },
+  { to: '/goals', label: 'Goals', icon: Target },
   { to: '/hott', label: 'Hott', icon: Flame },
 ]
 

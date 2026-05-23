@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import {
-  Inbox, Star, Send, FileText, AlertCircle, Trash2, Pencil, ChevronDown, X
+  Inbox, Star, Send, Target, FileText, AlertCircle, Trash2, Pencil, ChevronDown, X
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -12,6 +12,7 @@ interface SidebarProps {
 const NAV_ITEMS = [
   { to: '/inbox', label: 'Inbox', icon: Inbox },
   { to: '/starred', label: 'Starred', icon: Star },
+  { to: '/goals', label: 'Goals', icon: Target },
   { to: '/sent', label: 'Sent', icon: Send },
   { to: '/drafts', label: 'Drafts', icon: FileText },
   { to: '/spam', label: 'Spam', icon: AlertCircle },

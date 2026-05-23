@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { PinnedProvider } from './contexts/PinnedContext'
 import { HottProvider } from './contexts/HottContext'
+import { GoalsProvider } from './contexts/GoalsContext'
 import LoginPage from './components/LoginPage'
 import MainLayout from './components/MainLayout'
 
@@ -46,7 +47,9 @@ export default function App() {
           <AuthProvider>
             <PinnedProvider>
               <HottProvider>
-                <AppContent />
+                <GoalsProvider>
+                  <AppContent />
+                </GoalsProvider>
               </HottProvider>
             </PinnedProvider>
           </AuthProvider>
