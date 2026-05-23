@@ -261,7 +261,7 @@ function NoteCompose({ textareaRef, value, dueAt, onChange, onDueAtChange, onSub
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmit() } }}
         placeholder="Write a note…"
         rows={2}
-        className="w-full text-sm text-gray-800 bg-white border border-amber-200 rounded-lg px-3 py-2 resize-none outline-none focus:ring-2 focus:ring-amber-300 placeholder-gray-400"
+        className="w-full text-base md:text-sm text-gray-800 bg-white border border-amber-200 rounded-lg px-3 py-2 resize-none outline-none focus:ring-2 focus:ring-amber-300 placeholder-gray-400"
       />
       <label className="mt-1.5 flex items-center gap-2 text-xs text-amber-700">
         <CalendarClock size={14} className="text-amber-500 flex-shrink-0" />
@@ -270,7 +270,7 @@ function NoteCompose({ textareaRef, value, dueAt, onChange, onDueAtChange, onSub
           type="datetime-local"
           value={dueAt}
           onChange={(e) => onDueAtChange(e.target.value)}
-          className="min-w-0 flex-1 text-xs text-gray-700 bg-white border border-amber-200 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-amber-300"
+          className="min-w-0 flex-1 text-base md:text-xs text-gray-700 bg-white border border-amber-200 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-amber-300"
         />
       </label>
       <div className="flex justify-end gap-2 mt-1.5">
