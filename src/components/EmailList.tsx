@@ -47,16 +47,16 @@ function QuoteDivider({ quote }: { quote?: Quote }) {
   }
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 border-b border-gray-100 bg-gradient-to-r from-indigo-50/60 to-purple-50/60 select-none">
+    <div className="flex items-start gap-3 px-3 py-2 border-b border-gray-100 bg-gradient-to-r from-indigo-50/60 to-purple-50/60 select-none">
       <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-indigo-400 to-purple-500 text-white text-base">
         ✦
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-medium text-indigo-400 truncate">{quote?.author ?? '…'}</span>
+          <span className="text-sm font-medium text-indigo-400">{quote?.author ?? '…'}</span>
           <span className="text-xs text-purple-300 flex-shrink-0">inspiration</span>
         </div>
-        <p className="text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500 truncate">
+        <p className="text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">
           {quote?.quote ?? 'Life is good'}
         </p>
       </div>
@@ -102,10 +102,10 @@ function SortablePinnedItem({ item }: { item: PinnedItem }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-amber-500 truncate">{item.data.author}</span>
+            <span className="text-sm font-medium text-amber-500">{item.data.author}</span>
             <span className="text-xs text-orange-300 flex-shrink-0">pinned quote</span>
           </div>
-          <p className="text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500 truncate">
+          <p className="text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-500">
             {item.data.quote}
           </p>
         </div>
