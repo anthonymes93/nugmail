@@ -620,7 +620,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
         <>
           {emails.map((email, i) => (
             <div key={email.id}>
-              {i > 0 && <QuoteDivider quote={quotes ? quotes[(i - 1) % quotes.length] : undefined} />}
+              {i > 0 && i % 10 === 0 && <QuoteDivider quote={quotes ? quotes[Math.floor(i / 10) % quotes.length] : undefined} />}
               <EmailItem email={email} />
             </div>
           ))}
