@@ -19,7 +19,7 @@ export default function BottomNav({ onCompose }: BottomNavProps) {
   const [toastVisible, setToastVisible] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleNavClick = (to: string) => {
+  const handleNavClick = () => {
     document.getElementById('mail-scroll')?.scrollTo({ top: 0, behavior: 'smooth' })
 
     // Reset any in-flight timer
@@ -47,7 +47,7 @@ export default function BottomNav({ onCompose }: BottomNavProps) {
             onClick={(e) => {
               if (pathname === to) {
                 e.preventDefault()
-                handleNavClick(to)
+                handleNavClick()
               }
             }}
             className={({ isActive }) =>
