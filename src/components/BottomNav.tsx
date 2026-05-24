@@ -76,16 +76,11 @@ export default function BottomNav({ onCompose }: BottomNavProps) {
 
       {toastMounted && (
         <div
-          className="fixed left-1/2 z-50 flex items-center gap-2 bg-white rounded-full px-4 py-2.5 shadow-lg border border-green-100 pointer-events-none"
-          style={{
-            top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
-            transform: `translateX(-50%) translateY(${toastVisible ? '0px' : '-12px'})`,
-            opacity: toastVisible ? 1 : 0,
-            transition: 'opacity 0.3s ease, transform 0.3s ease',
-          }}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white pointer-events-none"
+          style={{ opacity: toastVisible ? 1 : 0, transition: 'opacity 0.3s ease' }}
         >
-          <CheckCircle size={17} className="text-green-500 flex-shrink-0" />
-          <span className="text-sm font-medium text-gray-800">You're Great!</span>
+          <CheckCircle size={72} className="text-green-400" strokeWidth={1.5} />
+          <p className="text-3xl font-semibold text-gray-800 tracking-tight">You're Great!</p>
         </div>
       )}
     </>
