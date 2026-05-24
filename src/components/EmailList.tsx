@@ -400,17 +400,18 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   const { data: quotes } = useQuotes()
   const pullQuote = quotes?.[pullQuoteIndex % quotes.length]
 
-  // Auto-load next page when sentinel scrolls into view
+  // Auto-load next page before user reaches the bottom
   useEffect(() => {
     const el = sentinelRef.current
     if (!el) return
+    const scrollRoot = document.getElementById('mail-scroll')
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
           fetchNextPage()
         }
       },
-      { threshold: 0.1 },
+      { root: scrollRoot, rootMargin: '0px 0px 400px 0px', threshold: 0 },
     )
     observer.observe(el)
     return () => observer.disconnect()
