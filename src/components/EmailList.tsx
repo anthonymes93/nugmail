@@ -36,6 +36,45 @@ const LABEL_NAMES: Record<string, string> = {
   TRASH: 'Trash',
 }
 
+const PULL_REFRESH_THRESHOLD = 72
+const PULL_REFRESH_MAX = 104
+
+function getRandomQuoteIndex(quotes?: Quote[]) {
+  if (!quotes?.length) return 0
+  return Math.floor(Math.random() * quotes.length)
+}
+
+function PullToRefreshIndicator({ height, ready, refreshing, quote }: {
+  height: number
+  ready: boolean
+  refreshing: boolean
+  quote?: Quote
+}) {
+  if (height <= 0 && !refreshing) return null
+
+  return (
+    <div
+      className="md:hidden overflow-hidden bg-white border-b border-gray-100 transition-[height] duration-150"
+      style={{ height }}
+      aria-hidden={!refreshing}
+    >
+      <div className="h-full flex flex-col items-center justify-center gap-1.5 px-6">
+        <div className="relative w-10 h-10 flex items-center justify-center">
+          <div className={`absolute inset-0 rounded-full border-2 border-g-blue/15 border-t-g-blue ${refreshing ? 'animate-spin' : ''}`} />
+          <div className={`absolute inset-1 rounded-full border border-indigo-200 border-b-indigo-500 ${refreshing ? 'animate-[spin_0.85s_linear_infinite_reverse]' : ''}`} />
+          <RefreshCw
+            size={17}
+            className={`relative z-10 ${ready || refreshing ? 'text-g-blue' : 'text-gray-300'}`}
+          />
+        </div>
+        <p className="max-w-64 truncate text-center text-[10px] leading-tight text-gray-400">
+          {quote ? `"${quote.quote}"` : 'Pull to refresh'}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function QuoteDivider({ quote }: { quote?: Quote }) {
   const { pinQuote, unpin, isPinned } = usePinned()
   const pinned = quote ? isPinned('quote', quote.id) : false
@@ -319,10 +358,27 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   const [searchParams] = useSearchParams()
   const { pathname } = useLocation()
   const searchQuery = isSearch ? (searchParams.get('q') ?? '') : undefined
+  const pullStartY = useRef<number | null>(null)
+  const pullActive = useRef(false)
+  const [pullDistance, setPullDistance] = useState(0)
+  const [pullRefreshing, setPullRefreshing] = useState(false)
+  const [pullQuoteIndex, setPullQuoteIndex] = useState(0)
 
   const { emails, isLoading, isRefetching, isError, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } =
     useEmailList(labelId, searchQuery)
   const { data: quotes } = useQuotes()
+  const pullQuote = quotes?.[pullQuoteIndex % quotes.length]
+  const isPulling = pullDistance > 0 && !pullRefreshing
+
+  useEffect(() => {
+    if (!quotes?.length || (!isPulling && !pullRefreshing)) return
+
+    const id = window.setInterval(() => {
+      setPullQuoteIndex((index) => (index + 1) % quotes.length)
+    }, 220)
+
+    return () => window.clearInterval(id)
+  }, [isPulling, pullRefreshing, quotes])
 
   // Restore scroll position when returning from email detail
   useEffect(() => {
@@ -338,6 +394,61 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   }, [emails.length, pathname])
 
   const title = isSearch ? `Search: "${searchQuery}"` : (LABEL_NAMES[labelId] ?? labelId)
+  const pullReady = pullDistance >= PULL_REFRESH_THRESHOLD
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const scrollEl = document.getElementById('mail-scroll')
+    if (!scrollEl || scrollEl.scrollTop > 0 || pullRefreshing) return
+
+    pullStartY.current = e.touches[0].clientY
+    pullActive.current = true
+    setPullQuoteIndex(getRandomQuoteIndex(quotes))
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!pullActive.current || pullStartY.current === null || pullRefreshing) return
+
+    const scrollEl = document.getElementById('mail-scroll')
+    if (!scrollEl || scrollEl.scrollTop > 0) {
+      pullActive.current = false
+      pullStartY.current = null
+      setPullDistance(0)
+      return
+    }
+
+    const delta = e.touches[0].clientY - pullStartY.current
+    if (delta <= 0) {
+      setPullDistance(0)
+      return
+    }
+
+    if (delta > 8) e.preventDefault()
+    setPullDistance(Math.min(PULL_REFRESH_MAX, delta * 0.55))
+  }
+
+  const handleTouchEnd = async () => {
+    if (!pullActive.current) return
+
+    const shouldRefresh = pullDistance >= PULL_REFRESH_THRESHOLD
+    pullActive.current = false
+    pullStartY.current = null
+
+    if (!shouldRefresh) {
+      setPullDistance(0)
+      return
+    }
+
+    setPullRefreshing(true)
+    setPullDistance(PULL_REFRESH_THRESHOLD)
+    try {
+      await refetch()
+    } finally {
+      window.setTimeout(() => {
+        setPullRefreshing(false)
+        setPullDistance(0)
+      }, 350)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -365,7 +476,19 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   }
 
   return (
-    <div className="flex flex-col">
+    <div
+      className="flex flex-col"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+    >
+      <PullToRefreshIndicator
+        height={pullRefreshing ? PULL_REFRESH_THRESHOLD : pullDistance}
+        ready={pullReady}
+        refreshing={pullRefreshing}
+        quote={pullQuote}
+      />
       <PinnedSection />
 
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
