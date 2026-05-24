@@ -7,7 +7,7 @@ const STORAGE_KEY = 'nugmail_accounts_v1'
 
 function loadFromStorage(): Account[] {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(STORAGE_KEY) ?? sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return []
     return JSON.parse(raw) as Account[]
   } catch {
@@ -16,7 +16,8 @@ function loadFromStorage(): Account[] {
 }
 
 function saveToStorage(accounts: Account[]) {
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(accounts))
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts))
+  sessionStorage.removeItem(STORAGE_KEY)
 }
 
 export function isAccountActive(account: Account) {
@@ -28,6 +29,7 @@ interface AuthContextType {
   activeAccounts: Account[]
   isAuthenticated: boolean
   addAccount: (token: string, expiresIn: number, user: User) => void
+  updateAccountToken: (email: string, token: string, expiresIn: number) => void
   removeAccount: (email: string) => void
   clearAll: () => void
   getToken: (email: string) => string | undefined
@@ -51,6 +53,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const updateAccountToken = useCallback((email: string, token: string, expiresIn: number) => {
+    setAccounts((prev) => {
+      const next = prev.map((account) =>
+        account.user.email === email
+          ? { ...account, accessToken: token, tokenExpiry: Date.now() + expiresIn * 1000 }
+          : account
+      )
+      saveToStorage(next)
+      return next
+    })
+  }, [])
+
   const removeAccount = useCallback((email: string) => {
     setAccounts((prev) => {
       const next = prev.filter((a) => a.user.email !== email)
@@ -61,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearAll = useCallback(() => {
     sessionStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(STORAGE_KEY)
     setAccounts([])
     signOut(auth).catch(console.error)
   }, [])
@@ -81,8 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         accounts,
         activeAccounts,
-        isAuthenticated: activeAccounts.length > 0,
+        isAuthenticated: accounts.length > 0,
         addAccount,
+        updateAccountToken,
         removeAccount,
         clearAll,
         getToken,

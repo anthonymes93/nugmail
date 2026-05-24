@@ -7,6 +7,7 @@ import { HottProvider } from './contexts/HottContext'
 import { GoalsProvider } from './contexts/GoalsContext'
 import LoginPage from './components/LoginPage'
 import MainLayout from './components/MainLayout'
+import AuthSessionKeeper from './components/AuthSessionKeeper'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +46,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
+            <AuthSessionKeeper />
             <PinnedProvider>
               <HottProvider>
                 <GoalsProvider>
