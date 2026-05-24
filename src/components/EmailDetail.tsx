@@ -7,7 +7,8 @@ import {
 import { useEmailDetail, useEmailActions } from '../hooks/useEmailDetail'
 import { useGoalRelevance } from '../hooks/useGoalRelevance'
 import { useGoalLabels } from '../hooks/useGoalLabels'
-import { formatFullDate, getInitials, getAvatarColor } from '../utils/formatters'
+import { formatFullDate } from '../utils/formatters'
+import SenderAvatar from './SenderAvatar'
 import { useGoals, type Goal } from '../contexts/GoalsContext'
 import ComposeModal from './ComposeModal'
 import DOMPurify from 'dompurify'
@@ -111,8 +112,6 @@ export default function EmailDetail() {
     )
   }
 
-  const avatarColor = getAvatarColor(email.fromEmail)
-  const initials = getInitials(email.fromName)
   const bodyContent = email.bodyHtml
     ? DOMPurify.sanitize(email.bodyHtml, { USE_PROFILES: { html: true } })
     : (email.bodyText ?? email.snippet)
@@ -177,9 +176,7 @@ export default function EmailDetail() {
           <h1 className="text-xl font-normal text-gray-900 mb-4 leading-snug">{email.subject}</h1>
 
           <div className="flex items-start gap-3 mb-4">
-            <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white text-sm font-medium ${avatarColor}`}>
-              {initials}
-            </div>
+            <SenderAvatar email={email.fromEmail} name={email.fromName} size={40} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-gray-900 text-sm">{email.fromName}</span>

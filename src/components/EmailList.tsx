@@ -385,6 +385,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   const [searchParams] = useSearchParams()
   const { pathname } = useLocation()
   const searchQuery = isSearch ? (searchParams.get('q') ?? '') : undefined
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const pullStartY = useRef<number | null>(null)
   const pullActive = useRef(false)
   const pullDistanceRef = useRef(0)
@@ -398,6 +399,22 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
     useEmailList(labelId, searchQuery)
   const { data: quotes } = useQuotes()
   const pullQuote = quotes?.[pullQuoteIndex % quotes.length]
+
+  // Auto-load next page when sentinel scrolls into view
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage()
+        }
+      },
+      { threshold: 0.1 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   // Restore scroll position when returning from email detail
   useEffect(() => {
@@ -561,18 +578,9 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
             </div>
           ))}
 
-          {hasNextPage && (
-            <div className="flex justify-center py-4">
-              <button
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
-                className="flex items-center gap-2 text-g-blue text-sm font-medium px-5 py-2 rounded-full hover:bg-g-hover disabled:opacity-50 transition-colors"
-              >
-                {isFetchingNextPage && <Loader2 size={14} className="animate-spin" />}
-                {isFetchingNextPage ? 'Loading…' : 'Load more'}
-              </button>
-            </div>
-          )}
+          <div ref={sentinelRef} className="flex justify-center py-4 min-h-[1px]">
+            {isFetchingNextPage && <Loader2 size={20} className="animate-spin text-gray-400" />}
+          </div>
         </>
       )}
     </div>

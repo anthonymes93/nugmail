@@ -3,11 +3,12 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Star, Paperclip, Pin, Archive, Reply, Forward, MailOpen, FolderInput, Tag, Ban, Flame, X } from 'lucide-react'
 import type { ParsedEmail } from '../types/gmail'
-import { formatEmailDate, getInitials, getAvatarColor } from '../utils/formatters'
+import { formatEmailDate, getAvatarColor } from '../utils/formatters'
 import { useEmailActions } from '../hooks/useEmailDetail'
 import { useAuth } from '../contexts/AuthContext'
 import { usePinned } from '../contexts/PinnedContext'
 import { useHott } from '../contexts/HottContext'
+import SenderAvatar from './SenderAvatar'
 
 interface EmailItemProps {
   email: ParsedEmail
@@ -98,6 +99,7 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
   const pinned = isPinned('email', email.id)
   const [menuOpen, setMenuOpen] = useState(false)
 
+  const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
@@ -185,10 +187,22 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
       // Full swipe → archive
       wasSwipe.current = true
       const dir = dx > 0 ? 1 : -1
-      contentRef.current.style.transition = 'transform 0.2s ease, opacity 0.2s ease'
+      contentRef.current.style.transition = 'transform 0.18s ease, opacity 0.18s ease'
       contentRef.current.style.transform = `translateX(${dir * 110}vw)`
       contentRef.current.style.opacity = '0'
-      setTimeout(() => archive.mutate({ id: email.id, accountEmail: email.accountEmail }), 180)
+      // Collapse the row height immediately after content slides off — no waiting for refetch
+      if (containerRef.current) {
+        const h = containerRef.current.offsetHeight
+        containerRef.current.style.height = `${h}px`
+        containerRef.current.style.overflow = 'hidden'
+        setTimeout(() => {
+          if (containerRef.current) {
+            containerRef.current.style.transition = 'height 0.18s ease'
+            containerRef.current.style.height = '0'
+          }
+        }, 160)
+      }
+      setTimeout(() => archive.mutate({ id: email.id, accountEmail: email.accountEmail }), 320)
     } else if (direction === true) {
       // Short horizontal swipe → snap back
       contentRef.current.style.transition = 'transform 0.2s ease'
@@ -234,13 +248,11 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
     else pinEmail(email)
   }
 
-  const senderColor = getAvatarColor(email.fromEmail)
   const accountColor = getAvatarColor(email.accountEmail)
-  const initials = getInitials(email.fromName)
 
   return (
     <>
-      <div className="relative overflow-hidden border-b border-gray-100">
+      <div ref={containerRef} className="relative overflow-hidden border-b border-gray-100">
         {!inPinnedSection && (
           <div className="absolute inset-0 bg-green-500 flex items-center justify-between px-5">
             <div className="flex items-center gap-2 text-white">
@@ -266,9 +278,7 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
           `}
         >
           <div className="relative flex-shrink-0">
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-medium ${senderColor}`}>
-              {initials}
-            </div>
+            <SenderAvatar email={email.fromEmail} name={email.fromName} size={36} />
             {multipleAccounts && (
               <div
                 className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center text-white font-bold ${accountColor}`}
