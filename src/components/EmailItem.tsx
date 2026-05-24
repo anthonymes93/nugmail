@@ -312,6 +312,8 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
 
           <button
             onClick={handlePin}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
             className="p-1 rounded-full hover:bg-gray-200 flex-shrink-0 transition-colors mt-0.5"
             aria-label={pinned ? 'Unpin' : 'Pin'}
           >
@@ -320,6 +322,8 @@ export default function EmailItem({ email, inPinnedSection }: EmailItemProps) {
 
           <button
             onClick={handleStar}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
             className="p-1 rounded-full hover:bg-gray-200 flex-shrink-0 transition-colors mt-0.5"
             aria-label={email.isStarred ? 'Unstar' : 'Star'}
           >
