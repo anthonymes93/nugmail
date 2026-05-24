@@ -26,7 +26,7 @@ export default function MainLayout() {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
-        <main id="mail-scroll" className="flex-1 overflow-y-auto">
+        <main id="mail-scroll" className="flex-1 overflow-y-auto bg-white">
           <Routes>
             <Route path="/" element={<Navigate to="/inbox" replace />} />
             <Route path="/inbox" element={<EmailList labelId="INBOX" />} />
