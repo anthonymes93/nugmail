@@ -18,12 +18,16 @@ export default function SenderAvatar({ email, name, size = 36, className = '' }:
   if (domain && !imgFailed) {
     return (
       <img
-        src={`https://logo.clearbit.com/${domain}`}
+        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
         alt={name}
         width={size}
         height={size}
         className={`rounded-full object-contain bg-white flex-shrink-0 ${className}`}
         style={{ width: size, height: size }}
+        onLoad={(e) => {
+          // Google returns its generic globe as 16×16 regardless of sz — treat it as a miss
+          if (e.currentTarget.naturalWidth <= 16) setImgFailed(true)
+        }}
         onError={() => setImgFailed(true)}
       />
     )
