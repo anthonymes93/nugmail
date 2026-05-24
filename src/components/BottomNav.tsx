@@ -1,5 +1,6 @@
+import { useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { Inbox, Star, Target, Flame, Mail } from 'lucide-react'
+import { Inbox, Star, Target, Flame, Mail, CheckCircle } from 'lucide-react'
 
 const NAV_ITEMS = [
   { to: '/inbox', label: 'Inbox', icon: Inbox },
@@ -14,11 +15,24 @@ interface BottomNavProps {
 
 export default function BottomNav({ onCompose }: BottomNavProps) {
   const { pathname } = useLocation()
+  const [toastMounted, setToastMounted] = useState(false)
+  const [toastVisible, setToastVisible] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleNavClick = (to: string) => {
-    if (pathname === to) {
-      document.getElementById('mail-scroll')?.scrollTo({ top: 0, behavior: 'smooth' })
-    }
+    if (pathname !== to) return
+    document.getElementById('mail-scroll')?.scrollTo({ top: 0, behavior: 'smooth' })
+
+    // Reset any in-flight timer
+    if (timerRef.current) clearTimeout(timerRef.current)
+
+    setToastMounted(true)
+    requestAnimationFrame(() => requestAnimationFrame(() => setToastVisible(true)))
+
+    timerRef.current = setTimeout(() => {
+      setToastVisible(false)
+      timerRef.current = setTimeout(() => setToastMounted(false), 350)
+    }, 2000)
   }
 
   return (
@@ -59,6 +73,21 @@ export default function BottomNav({ onCompose }: BottomNavProps) {
       >
         <Mail size={22} className="text-gray-800" />
       </button>
+
+      {toastMounted && (
+        <div
+          className="fixed left-1/2 z-50 flex items-center gap-2 bg-white rounded-full px-4 py-2.5 shadow-lg border border-green-100 pointer-events-none"
+          style={{
+            top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+            transform: `translateX(-50%) translateY(${toastVisible ? '0px' : '-12px'})`,
+            opacity: toastVisible ? 1 : 0,
+            transition: 'opacity 0.3s ease, transform 0.3s ease',
+          }}
+        >
+          <CheckCircle size={17} className="text-green-500 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-800">You're Great!</span>
+        </div>
+      )}
     </>
   )
 }
