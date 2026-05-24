@@ -20,7 +20,6 @@ export default function BottomNav({ onCompose }: BottomNavProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleNavClick = (to: string) => {
-    if (pathname !== to) return
     document.getElementById('mail-scroll')?.scrollTo({ top: 0, behavior: 'smooth' })
 
     // Reset any in-flight timer
@@ -45,7 +44,12 @@ export default function BottomNav({ onCompose }: BottomNavProps) {
           <NavLink
             key={to}
             to={to}
-            onClick={() => handleNavClick(to)}
+            onClick={(e) => {
+              if (pathname === to) {
+                e.preventDefault()
+                handleNavClick(to)
+              }
+            }}
             className={({ isActive }) =>
               `flex-1 flex flex-col items-center gap-0.5 py-2 text-xs transition-colors ${
                 isActive ? 'text-g-blue' : 'text-gray-500'
