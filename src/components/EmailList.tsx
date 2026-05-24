@@ -44,13 +44,18 @@ function getRandomQuoteIndex(quotes?: Quote[]) {
   return Math.floor(Math.random() * quotes.length)
 }
 
-function PullToRefreshIndicator({ height, ready, refreshing, quote }: {
+function PullToRefreshIndicator({ height, progress, refreshing, quote }: {
   height: number
-  ready: boolean
+  progress: number
   refreshing: boolean
   quote?: Quote
 }) {
   if (height <= 0 && !refreshing) return null
+  const size = 38
+  const stroke = 3
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference * (1 - Math.max(0, Math.min(1, progress)))
 
   return (
     <div
@@ -60,11 +65,32 @@ function PullToRefreshIndicator({ height, ready, refreshing, quote }: {
     >
       <div className="h-full flex flex-col items-center justify-center gap-1.5 px-6">
         <div className="relative w-10 h-10 flex items-center justify-center">
-          <div className={`absolute inset-0 rounded-full border-2 border-g-blue/15 border-t-g-blue ${refreshing ? 'animate-spin' : ''}`} />
-          <div className={`absolute inset-1 rounded-full border border-indigo-200 border-b-indigo-500 ${refreshing ? 'animate-[spin_0.85s_linear_infinite_reverse]' : ''}`} />
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={refreshing ? 'animate-spin' : ''}>
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke="#e5e7eb"
+              strokeWidth={stroke}
+            />
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke="#1a73e8"
+              strokeWidth={stroke}
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={refreshing ? circumference * 0.25 : offset}
+              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+              className="transition-[stroke-dashoffset] duration-75"
+            />
+          </svg>
           <RefreshCw
-            size={17}
-            className={`relative z-10 ${ready || refreshing ? 'text-g-blue' : 'text-gray-300'}`}
+            size={15}
+            className={`absolute ${progress >= 1 || refreshing ? 'text-g-blue' : 'text-gray-300'}`}
           />
         </div>
         <p className="max-w-64 truncate text-center text-[10px] leading-tight text-gray-400">
@@ -360,6 +386,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   const searchQuery = isSearch ? (searchParams.get('q') ?? '') : undefined
   const pullStartY = useRef<number | null>(null)
   const pullActive = useRef(false)
+  const pullVibrated = useRef(false)
   const [pullDistance, setPullDistance] = useState(0)
   const [pullRefreshing, setPullRefreshing] = useState(false)
   const [pullQuoteIndex, setPullQuoteIndex] = useState(0)
@@ -368,17 +395,6 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
     useEmailList(labelId, searchQuery)
   const { data: quotes } = useQuotes()
   const pullQuote = quotes?.[pullQuoteIndex % quotes.length]
-  const isPulling = pullDistance > 0 && !pullRefreshing
-
-  useEffect(() => {
-    if (!quotes?.length || (!isPulling && !pullRefreshing)) return
-
-    const id = window.setInterval(() => {
-      setPullQuoteIndex((index) => (index + 1) % quotes.length)
-    }, 220)
-
-    return () => window.clearInterval(id)
-  }, [isPulling, pullRefreshing, quotes])
 
   // Restore scroll position when returning from email detail
   useEffect(() => {
@@ -394,7 +410,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   }, [emails.length, pathname])
 
   const title = isSearch ? `Search: "${searchQuery}"` : (LABEL_NAMES[labelId] ?? labelId)
-  const pullReady = pullDistance >= PULL_REFRESH_THRESHOLD
+  const pullProgress = Math.min(1, pullDistance / PULL_REFRESH_THRESHOLD)
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const scrollEl = document.getElementById('mail-scroll')
@@ -402,6 +418,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
 
     pullStartY.current = e.touches[0].clientY
     pullActive.current = true
+    pullVibrated.current = false
     setPullQuoteIndex(getRandomQuoteIndex(quotes))
   }
 
@@ -423,7 +440,14 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
     }
 
     if (delta > 8) e.preventDefault()
-    setPullDistance(Math.min(PULL_REFRESH_MAX, delta * 0.55))
+
+    const nextDistance = Math.min(PULL_REFRESH_MAX, delta * 0.55)
+    if (nextDistance >= PULL_REFRESH_THRESHOLD && !pullVibrated.current) {
+      pullVibrated.current = true
+      navigator.vibrate?.(18)
+    }
+    if (nextDistance < PULL_REFRESH_THRESHOLD) pullVibrated.current = false
+    setPullDistance(nextDistance)
   }
 
   const handleTouchEnd = async () => {
@@ -432,6 +456,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
     const shouldRefresh = pullDistance >= PULL_REFRESH_THRESHOLD
     pullActive.current = false
     pullStartY.current = null
+    pullVibrated.current = false
 
     if (!shouldRefresh) {
       setPullDistance(0)
@@ -485,7 +510,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
     >
       <PullToRefreshIndicator
         height={pullRefreshing ? PULL_REFRESH_THRESHOLD : pullDistance}
-        ready={pullReady}
+        progress={pullRefreshing ? 1 : pullProgress}
         refreshing={pullRefreshing}
         quote={pullQuote}
       />
