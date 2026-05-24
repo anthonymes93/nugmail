@@ -20,6 +20,8 @@ import { CSS } from '@dnd-kit/utilities'
 import { useEmailList } from '../hooks/useEmailList'
 import { useQuotes, type Quote } from '../hooks/useQuotes'
 import { usePinned } from '../contexts/PinnedContext'
+import { useAuth } from '../contexts/AuthContext'
+import { useGoogleAuth } from '../hooks/useGoogleAuth'
 import EmailItem from './EmailItem'
 
 interface EmailListProps {
@@ -395,6 +397,10 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   const [pullRefreshing, setPullRefreshing] = useState(false)
   const [pullQuoteIndex, setPullQuoteIndex] = useState(0)
 
+  const { accounts, activeAccounts } = useAuth()
+  const { login } = useGoogleAuth()
+  const sessionExpired = accounts.length > 0 && activeAccounts.length === 0
+
   const { emails, isLoading, isRefetching, isError, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } =
     useEmailList(labelId, searchQuery)
   const { data: quotes } = useQuotes()
@@ -510,6 +516,21 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
         updatePullDistance(0)
       }, 350)
     }
+  }
+
+  if (sessionExpired) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4 text-gray-500 px-6">
+        <Mail size={40} className="text-gray-300" />
+        <p className="text-sm text-center">Your session expired. Sign in again to reload your mail.</p>
+        <button
+          onClick={() => login()}
+          className="flex items-center gap-2 bg-g-blue text-white px-4 py-2 rounded-full text-sm hover:bg-blue-700"
+        >
+          Sign in again
+        </button>
+      </div>
+    )
   }
 
   if (isLoading) {
