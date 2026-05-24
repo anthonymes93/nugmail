@@ -59,7 +59,7 @@ function PullToRefreshIndicator({ height, progress, refreshing, quote }: {
 
   return (
     <div
-      className="md:hidden overflow-hidden bg-white border-b border-gray-100 transition-[height] duration-150"
+      className={`md:hidden overflow-hidden bg-white border-b border-gray-100 ${refreshing ? 'transition-[height] duration-150' : ''}`}
       style={{ height }}
       aria-hidden={!refreshing}
     >
@@ -85,7 +85,7 @@ function PullToRefreshIndicator({ height, progress, refreshing, quote }: {
               strokeDasharray={circumference}
               strokeDashoffset={refreshing ? circumference * 0.25 : offset}
               transform={`rotate(-90 ${size / 2} ${size / 2})`}
-              className="transition-[stroke-dashoffset] duration-75"
+              className={refreshing ? 'transition-[stroke-dashoffset] duration-150' : ''}
             />
           </svg>
           <RefreshCw
@@ -386,6 +386,8 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   const searchQuery = isSearch ? (searchParams.get('q') ?? '') : undefined
   const pullStartY = useRef<number | null>(null)
   const pullActive = useRef(false)
+  const pullDistanceRef = useRef(0)
+  const pullRaf = useRef<number | null>(null)
   const pullVibrated = useRef(false)
   const [pullDistance, setPullDistance] = useState(0)
   const [pullRefreshing, setPullRefreshing] = useState(false)
@@ -412,12 +414,28 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   const title = isSearch ? `Search: "${searchQuery}"` : (LABEL_NAMES[labelId] ?? labelId)
   const pullProgress = Math.min(1, pullDistance / PULL_REFRESH_THRESHOLD)
 
+  const updatePullDistance = (distance: number) => {
+    pullDistanceRef.current = distance
+    if (pullRaf.current !== null) return
+
+    pullRaf.current = window.requestAnimationFrame(() => {
+      pullRaf.current = null
+      setPullDistance(pullDistanceRef.current)
+    })
+  }
+
+  useEffect(() => () => {
+    if (pullRaf.current !== null) window.cancelAnimationFrame(pullRaf.current)
+  }, [])
+
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return
     const scrollEl = document.getElementById('mail-scroll')
     if (!scrollEl || scrollEl.scrollTop > 0 || pullRefreshing) return
 
     pullStartY.current = e.touches[0].clientY
     pullActive.current = true
+    pullDistanceRef.current = 0
     pullVibrated.current = false
     setPullQuoteIndex(getRandomQuoteIndex(quotes))
   }
@@ -429,48 +447,48 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
     if (!scrollEl || scrollEl.scrollTop > 0) {
       pullActive.current = false
       pullStartY.current = null
-      setPullDistance(0)
+      updatePullDistance(0)
       return
     }
 
     const delta = e.touches[0].clientY - pullStartY.current
     if (delta <= 0) {
-      setPullDistance(0)
+      updatePullDistance(0)
       return
     }
 
-    if (delta > 8) e.preventDefault()
-
-    const nextDistance = Math.min(PULL_REFRESH_MAX, delta * 0.55)
+    const easedDistance = Math.pow(delta, 0.86) * 0.78
+    const nextDistance = Math.min(PULL_REFRESH_MAX, easedDistance)
+    if (nextDistance > 2) e.preventDefault()
     if (nextDistance >= PULL_REFRESH_THRESHOLD && !pullVibrated.current) {
       pullVibrated.current = true
       navigator.vibrate?.(18)
     }
     if (nextDistance < PULL_REFRESH_THRESHOLD) pullVibrated.current = false
-    setPullDistance(nextDistance)
+    updatePullDistance(nextDistance)
   }
 
   const handleTouchEnd = async () => {
     if (!pullActive.current) return
 
-    const shouldRefresh = pullDistance >= PULL_REFRESH_THRESHOLD
+    const shouldRefresh = pullDistanceRef.current >= PULL_REFRESH_THRESHOLD
     pullActive.current = false
     pullStartY.current = null
     pullVibrated.current = false
 
     if (!shouldRefresh) {
-      setPullDistance(0)
+      updatePullDistance(0)
       return
     }
 
     setPullRefreshing(true)
-    setPullDistance(PULL_REFRESH_THRESHOLD)
+    updatePullDistance(PULL_REFRESH_THRESHOLD)
     try {
       await refetch()
     } finally {
       window.setTimeout(() => {
         setPullRefreshing(false)
-        setPullDistance(0)
+        updatePullDistance(0)
       }, 350)
     }
   }
