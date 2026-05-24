@@ -36,8 +36,8 @@ const LABEL_NAMES: Record<string, string> = {
   TRASH: 'Trash',
 }
 
-const PULL_REFRESH_THRESHOLD = 72
-const PULL_REFRESH_MAX = 104
+const PULL_REFRESH_THRESHOLD = 112
+const PULL_REFRESH_MAX = 148
 
 function getRandomQuoteIndex(quotes?: Quote[]) {
   if (!quotes?.length) return 0
@@ -457,7 +457,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
       return
     }
 
-    const easedDistance = Math.pow(delta, 0.86) * 0.78
+    const easedDistance = Math.max(0, delta - 10) * 0.42
     const nextDistance = Math.min(PULL_REFRESH_MAX, easedDistance)
     if (nextDistance > 2) e.preventDefault()
     if (nextDistance >= PULL_REFRESH_THRESHOLD && !pullVibrated.current) {
