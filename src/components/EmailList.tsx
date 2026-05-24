@@ -388,6 +388,9 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   const { pathname } = useLocation()
   const searchQuery = isSearch ? (searchParams.get('q') ?? '') : undefined
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const pinnedSectionRef = useRef<HTMLDivElement>(null)
+  const prevPinnedHeight = useRef<number>(0)
+  const pinnedFirstObs = useRef(true)
   const pullStartY = useRef<number | null>(null)
   const pullActive = useRef(false)
   const pullDistanceRef = useRef(0)
@@ -422,6 +425,28 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
     observer.observe(el)
     return () => observer.disconnect()
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  // Compensate scroll when pinned section grows/shrinks so visible emails don't jump
+  useEffect(() => {
+    const el = pinnedSectionRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      const newHeight = entries[0].contentRect.height
+      if (pinnedFirstObs.current) {
+        pinnedFirstObs.current = false
+        prevPinnedHeight.current = newHeight
+        return
+      }
+      const diff = newHeight - prevPinnedHeight.current
+      prevPinnedHeight.current = newHeight
+      if (diff !== 0) {
+        const scrollEl = document.getElementById('mail-scroll')
+        if (scrollEl) scrollEl.scrollTop += diff
+      }
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   // Restore scroll position when returning from email detail
   useEffect(() => {
@@ -572,7 +597,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
         refreshing={pullRefreshing}
         quote={pullQuote}
       />
-      <PinnedSection />
+      <div ref={pinnedSectionRef}><PinnedSection /></div>
 
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
         <h2 className="text-sm font-medium text-gray-600">{title}</h2>
