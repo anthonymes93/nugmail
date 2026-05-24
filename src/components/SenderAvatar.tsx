@@ -18,7 +18,7 @@ export default function SenderAvatar({ email, name, size = 36, className = '' }:
   if (domain && !imgFailed) {
     return (
       <img
-        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+        src={`https://logo.clearbit.com/${domain}`}
         alt={name}
         width={size}
         height={size}
