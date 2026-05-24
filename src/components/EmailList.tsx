@@ -38,6 +38,7 @@ const LABEL_NAMES: Record<string, string> = {
 
 const PULL_REFRESH_THRESHOLD = 112
 const PULL_REFRESH_MAX = 148
+const PULL_REFRESH_MIN_VISIBLE = 64
 
 function getRandomQuoteIndex(quotes?: Quote[]) {
   if (!quotes?.length) return 0
@@ -527,7 +528,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
       onTouchCancel={handleTouchEnd}
     >
       <PullToRefreshIndicator
-        height={pullRefreshing ? PULL_REFRESH_THRESHOLD : pullDistance}
+        height={pullRefreshing ? PULL_REFRESH_THRESHOLD : pullDistance > 0 ? Math.max(PULL_REFRESH_MIN_VISIBLE, pullDistance) : 0}
         progress={pullRefreshing ? 1 : pullProgress}
         refreshing={pullRefreshing}
         quote={pullQuote}
