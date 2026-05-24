@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { Inbox, Star, Target, Flame, Mail } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -13,6 +13,14 @@ interface BottomNavProps {
 }
 
 export default function BottomNav({ onCompose }: BottomNavProps) {
+  const { pathname } = useLocation()
+
+  const handleNavClick = (to: string) => {
+    if (pathname === to) {
+      document.getElementById('mail-scroll')?.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
   return (
     <>
       <nav
@@ -23,6 +31,7 @@ export default function BottomNav({ onCompose }: BottomNavProps) {
           <NavLink
             key={to}
             to={to}
+            onClick={() => handleNavClick(to)}
             className={({ isActive }) =>
               `flex-1 flex flex-col items-center gap-0.5 py-2 text-xs transition-colors ${
                 isActive ? 'text-g-blue' : 'text-gray-500'
