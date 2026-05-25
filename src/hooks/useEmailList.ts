@@ -1,14 +1,16 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { useAuth } from '../contexts/AuthContext'
-import { gmailService } from '../services/gmail'
+import { isAccountActive, useAuth } from '../contexts/AuthContext'
+import { useGoogleAuth } from './useGoogleAuth'
+import { gmailService, isGmailApiError } from '../services/gmail'
 import { parseGmailMessage } from '../utils/emailParser'
 import type { ParsedEmail } from '../types/gmail'
 
 type PageTokenMap = Record<string, string | undefined>
 
 export function useEmailList(labelId: string, searchQuery?: string) {
-  const { activeAccounts } = useAuth()
-  const accountKey = activeAccounts.map((a) => a.user.email).join(',')
+  const { accounts } = useAuth()
+  const { refreshAccount } = useGoogleAuth()
+  const accountKey = accounts.map((a) => `${a.user.email}:${a.tokenExpiry}`).join(',')
 
   const query = useInfiniteQuery({
     queryKey: ['emailList', labelId, searchQuery ?? '', accountKey],
@@ -16,19 +18,39 @@ export function useEmailList(labelId: string, searchQuery?: string) {
       const tokenMap = (pageParam as PageTokenMap | undefined) ?? {}
 
       const results = await Promise.all(
-        activeAccounts.map(async (account) => {
+        accounts.map(async (account) => {
+          const getFreshToken = async () => {
+            if (isAccountActive(account)) return account.accessToken
+            const refreshedToken = await refreshAccount(account.user.email)
+            if (!refreshedToken) throw new Error('Session expired. Sign in again to reload your mail.')
+            return refreshedToken
+          }
+
+          let token = await getFreshToken()
           const labelIds = searchQuery ? [] : [labelId]
-          const listRes = await gmailService.listMessages(
-            account.accessToken,
-            labelIds,
-            tokenMap[account.user.email],
-            searchQuery
-          )
+
+          const listMessages = () =>
+            gmailService.listMessages(token, labelIds, tokenMap[account.user.email], searchQuery)
+
+          const listRes = await listMessages().catch(async (error) => {
+            if (!isGmailApiError(error) || error.status !== 401) throw error
+            const refreshedToken = await refreshAccount(account.user.email)
+            if (!refreshedToken) throw new Error('Session expired. Sign in again to reload your mail.')
+            token = refreshedToken
+            return listMessages()
+          })
+
           const ids = listRes.messages?.map((m) => m.id) ?? []
           if (ids.length === 0) {
             return { emails: [] as ParsedEmail[], nextPageToken: undefined, accountEmail: account.user.email }
           }
-          const messages = await gmailService.batchGetMessageMetadata(account.accessToken, ids)
+          const messages = await gmailService.batchGetMessageMetadata(token, ids).catch(async (error) => {
+            if (!isGmailApiError(error) || error.status !== 401) throw error
+            const refreshedToken = await refreshAccount(account.user.email)
+            if (!refreshedToken) throw new Error('Session expired. Sign in again to reload your mail.')
+            token = refreshedToken
+            return gmailService.batchGetMessageMetadata(token, ids)
+          })
           return {
             emails: messages.map((msg) => ({
               ...parseGmailMessage(msg),
@@ -56,7 +78,7 @@ export function useEmailList(labelId: string, searchQuery?: string) {
     },
     getNextPageParam: (lastPage) => lastPage.nextPageToken,
     initialPageParam: undefined as PageTokenMap | undefined,
-    enabled: activeAccounts.length > 0,
+    enabled: accounts.length > 0,
     refetchInterval: 30_000,
     staleTime: 15_000,
   })

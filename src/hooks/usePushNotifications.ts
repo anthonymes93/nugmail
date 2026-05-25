@@ -1,3 +1,6 @@
+import { useCallback, useEffect, useState } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY ?? ''
 const PREF_KEY = 'nugmail_notif_prefs'
 
@@ -76,13 +79,22 @@ async function createSubscription(): Promise<PushSubscription | null> {
   }
 }
 
-import { useCallback, useEffect, useState } from 'react'
+async function registerWithServer(email: string, sub: PushSubscription, sound: boolean) {
+  try {
+    await fetch('/api/register-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, subscription: sub.toJSON(), sound }),
+    })
+  } catch {}
+}
 
 export function usePushNotifications() {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   const [permission, setPermission] = useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   )
+  const { activeAccounts } = useAuth()
 
   const isSupported =
     typeof Notification !== 'undefined' &&
@@ -97,10 +109,14 @@ export function usePushNotifications() {
     })
   }, [])
 
-  // Restore cached subscription on mount if already enabled
+  // On mount: re-register subscription with server to keep it fresh
   useEffect(() => {
     if (prefs.enabled && permission === 'granted') {
-      void fetchSubscription()
+      void fetchSubscription().then(async (sub) => {
+        if (!sub) return
+        const email = activeAccounts[0]?.user.email
+        if (email) await registerWithServer(email, sub, prefs.sound)
+      })
     }
   }, []) // intentionally only on mount
 
@@ -112,22 +128,35 @@ export function usePushNotifications() {
     const sub = await createSubscription()
     if (!sub) return false
     updatePrefs({ enabled: true })
+
+    const email = activeAccounts[0]?.user.email
+    if (email) await registerWithServer(email, sub, loadPrefs().sound)
+
     return true
-  }, [isSupported, updatePrefs])
+  }, [isSupported, updatePrefs, activeAccounts])
 
   const disable = useCallback(async () => {
-    try { await cachedSubscription?.unsubscribe() } catch {}
+    try {
+      await cachedSubscription?.unsubscribe()
+    } catch {}
     cachedSubscription = null
     updatePrefs({ enabled: false })
   }, [updatePrefs])
 
   const toggleSound = useCallback(
-    (on: boolean) => updatePrefs({ sound: on }),
-    [updatePrefs]
+    async (on: boolean) => {
+      updatePrefs({ sound: on })
+      // Sync sound preference to server
+      const email = activeAccounts[0]?.user.email
+      if (email) {
+        const sub = cachedSubscription ?? (await fetchSubscription())
+        if (sub) await registerWithServer(email, sub, on)
+      }
+    },
+    [updatePrefs, activeAccounts]
   )
 
-  // notify() reads fresh prefs from localStorage so it always reflects
-  // the latest enabled/sound state regardless of which component calls it
+  // notify() is used for in-app notifications (app is open)
   const notify = useCallback(
     async (payload: { title: string; body?: string; messageId?: string }) => {
       const currentPrefs = loadPrefs()
@@ -155,5 +184,14 @@ export function usePushNotifications() {
     []
   )
 
-  return { enabled: prefs.enabled, sound: prefs.sound, permission, isSupported, enable, disable, toggleSound, notify }
+  return {
+    enabled: prefs.enabled,
+    sound: prefs.sound,
+    permission,
+    isSupported,
+    enable,
+    disable,
+    toggleSound,
+    notify,
+  }
 }

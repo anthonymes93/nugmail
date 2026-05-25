@@ -8,13 +8,15 @@ import { GoalsProvider } from './contexts/GoalsContext'
 import LoginPage from './components/LoginPage'
 import MainLayout from './components/MainLayout'
 import AuthSessionKeeper from './components/AuthSessionKeeper'
+import { isGmailApiError } from './services/gmail'
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 15_000,
       retry: (count, err) => {
-        if (err instanceof Error && err.message.includes('401')) return false
+        if (isGmailApiError(err) && err.status === 401) return false
+        if (err instanceof Error && err.message.includes('Session expired')) return false
         return count < 2
       },
     },

@@ -10,29 +10,32 @@ function shouldRefresh(tokenExpiry: number) {
 }
 
 export default function AuthSessionKeeper() {
-  const { accounts } = useAuth()
+  const { accounts, removeAccount } = useAuth()
   const { refreshAccount } = useGoogleAuth()
   const attemptedAt = useRef<Record<string, number>>({})
 
   useEffect(() => {
-    const refreshDueAccounts = () => {
+    const refreshDueAccounts = async () => {
       const account = accounts.find((item) => {
         if (isAccountActive(item) && !shouldRefresh(item.tokenExpiry)) return false
-
         const lastAttempt = attemptedAt.current[item.user.email] ?? 0
         return Date.now() - lastAttempt >= RETRY_AFTER_MS
       })
 
       if (account) {
         attemptedAt.current[account.user.email] = Date.now()
-        refreshAccount(account.user.email)
+        const token = await refreshAccount(account.user.email)
+        if (!token) {
+          // Server has no refresh token (e.g. pre-dates background push setup) — force re-login
+          removeAccount(account.user.email)
+        }
       }
     }
 
-    refreshDueAccounts()
-    const id = window.setInterval(refreshDueAccounts, 60_000)
+    void refreshDueAccounts()
+    const id = window.setInterval(() => void refreshDueAccounts(), 60_000)
     return () => window.clearInterval(id)
-  }, [accounts, refreshAccount])
+  }, [accounts, refreshAccount, removeAccount])
 
   return null
 }

@@ -510,14 +510,15 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   const [pullRefreshing, setPullRefreshing] = useState(false)
   const [pullQuoteIndex, setPullQuoteIndex] = useState(0)
 
-  const { accounts, activeAccounts } = useAuth()
+  const { accounts } = useAuth()
   const { login } = useGoogleAuth()
-  const sessionExpired = accounts.length > 0 && activeAccounts.length === 0
 
-  const { emails, isLoading, isRefetching, isError, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } =
+  const { emails, isLoading, isRefetching, isError, error, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } =
     useEmailList(labelId, searchQuery)
   const { data: quotes } = useQuotes()
   const pullQuote = quotes?.[pullQuoteIndex % quotes.length]
+  const authExpiredError = isError && error instanceof Error && error.message.includes('Session expired')
+  const sessionExpired = accounts.length > 0 && authExpiredError
 
   // Auto-load next page before user reaches the bottom
   useEffect(() => {

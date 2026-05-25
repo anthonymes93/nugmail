@@ -2,6 +2,20 @@ import type { GmailMessage, GmailMessagesResponse, GmailLabelsResponse } from '.
 
 const BASE = 'https://gmail.googleapis.com/gmail/v1/users/me'
 
+export class GmailApiError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'GmailApiError'
+    this.status = status
+  }
+}
+
+export function isGmailApiError(error: unknown): error is GmailApiError {
+  return error instanceof GmailApiError
+}
+
 async function apiFetch<T>(token: string, path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
@@ -14,7 +28,7 @@ async function apiFetch<T>(token: string, path: string, options?: RequestInit): 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: { message: res.statusText } }))
     const msg = (err as { error?: { message?: string } }).error?.message ?? `API ${res.status}`
-    throw new Error(msg)
+    throw new GmailApiError(res.status, msg)
   }
   return res.json() as Promise<T>
 }

@@ -1,6 +1,6 @@
 import { useGoogleLogin } from '@react-oauth/google'
 import { signInAnonymously } from 'firebase/auth'
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { auth } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
 import type { User } from '../types/gmail'
@@ -9,20 +9,25 @@ const GMAIL_SCOPE = 'https://mail.google.com/'
 
 export function useGoogleAuth() {
   const { addAccount, updateAccountToken } = useAuth()
-  const refreshEmailRef = useRef<string | null>(null)
 
   const login = useGoogleLogin({
     scope: GMAIL_SCOPE,
-    flow: 'implicit',
-    onSuccess: async (tokenResponse) => {
-      const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+    flow: 'auth-code',
+    onSuccess: async (codeResponse) => {
+      const res = await fetch('/api/exchange-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: codeResponse.code }),
       })
-      const profile = (await res.json()) as { email: string; name: string; picture: string }
-      const user: User = { email: profile.email, name: profile.name, picture: profile.picture }
 
-      // Sign in anonymously so we get a stable Firebase uid for Firestore pins.
-      // Anonymous auth persists in IndexedDB — uid survives page refreshes.
+      if (!res.ok) {
+        console.error('Token exchange failed', await res.text())
+        return
+      }
+
+      const { access_token, expires_in, user } = await res.json()
+      const typedUser: User = { email: user.email, name: user.name, picture: user.picture }
+
       if (!auth.currentUser) {
         try {
           await signInAnonymously(auth)
@@ -31,35 +36,30 @@ export function useGoogleAuth() {
         }
       }
 
-      addAccount(tokenResponse.access_token, tokenResponse.expires_in ?? 3600, user)
+      addAccount(access_token, expires_in ?? 3600, typedUser)
     },
     onError: (err) => console.error('Login failed', err),
   })
 
-  const refreshLogin = useGoogleLogin({
-    scope: GMAIL_SCOPE,
-    flow: 'implicit',
-    prompt: 'none',
-    onSuccess: (tokenResponse) => {
-      const email = refreshEmailRef.current
-      refreshEmailRef.current = null
-      if (!email) return
-      updateAccountToken(email, tokenResponse.access_token, tokenResponse.expires_in ?? 3600)
+  const refreshAccount = useCallback(
+    async (email: string): Promise<string | null> => {
+      try {
+        const res = await fetch('/api/refresh-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        })
+        if (!res.ok) return null
+        const { access_token, expires_in } = await res.json()
+        if (!access_token) return null
+        updateAccountToken(email, access_token, expires_in ?? 3600)
+        return access_token
+      } catch {
+        return null
+      }
     },
-    onError: (err) => {
-      refreshEmailRef.current = null
-      console.warn('Silent token refresh failed', err)
-    },
-    onNonOAuthError: (err) => {
-      refreshEmailRef.current = null
-      console.warn('Silent token refresh was not available', err)
-    },
-  })
-
-  const refreshAccount = useCallback((email: string) => {
-    refreshEmailRef.current = email
-    refreshLogin({ prompt: 'none', hint: email })
-  }, [refreshLogin])
+    [updateAccountToken]
+  )
 
   return { login, refreshAccount }
 }
