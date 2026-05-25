@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Star, Paperclip, Pin, Archive, Reply, Forward, MailOpen, FolderInput, Tag, Ban, Flame, X } from 'lucide-react'
+import { Star, Paperclip, Pin, Archive, Reply, Forward, MailOpen, FolderInput, Tag, Ban, Flame, X, Gamepad2 } from 'lucide-react'
 import type { ParsedEmail } from '../types/gmail'
 import { formatEmailDate, getInitials, getAvatarColor } from '../utils/formatters'
 import { useEmailActions } from '../hooks/useEmailDetail'
@@ -27,6 +27,7 @@ const MENU_ITEMS = [
   { icon: FolderInput, label: 'Move to' },
   { icon: Tag,         label: 'Label as' },
   { icon: Ban,         label: 'Block sender' },
+  { icon: Gamepad2,    label: 'Get your game on!' },
 ]
 
 function ContextMenu({ email, onClose }: { email: ParsedEmail; onClose: () => void }) {
