@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useSearchParams, useLocation } from 'react-router-dom'
-import { CalendarClock, RefreshCw, Loader2, Mail, Pin, SquarePen, X } from 'lucide-react'
+import { CalendarClock, RefreshCw, Loader2, Mail, Pin, SquarePen, X, Flame } from 'lucide-react'
 import {
   DndContext,
   closestCenter,
@@ -20,6 +21,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useEmailList } from '../hooks/useEmailList'
 import { useQuotes, type Quote } from '../hooks/useQuotes'
 import { usePinned } from '../contexts/PinnedContext'
+import { useHott } from '../contexts/HottContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useGoogleAuth } from '../hooks/useGoogleAuth'
 import EmailItem from './EmailItem'
@@ -353,15 +355,113 @@ function NoteCompose({ textareaRef, value, dueAt, onChange, onDueAtChange, onSub
   )
 }
 
+function NoteContextMenu({ item, onClose, onUnpin }: {
+  item: import('../contexts/PinnedContext').PinnedNote
+  onClose: () => void
+  onUnpin: () => void
+}) {
+  const openedAt = useRef(Date.now())
+  const { addNoteToHott, removeFromHott, isNoteHott } = useHott()
+  const hott = isNoteHott(item.id)
+
+  const handleBackdropClick = () => {
+    if (Date.now() - openedAt.current < 350) return
+    onClose()
+  }
+
+  const handleHott = () => {
+    if (hott) removeFromHott(item.id, 'note')
+    else addNoteToHott(item.id, item.data.text, item.data.dueAt)
+    onClose()
+  }
+
+  const handleUnpin = () => {
+    onUnpin()
+    onClose()
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+      <div className="absolute inset-0 bg-black/40" onClick={handleBackdropClick} />
+      <div className="relative bg-white rounded-t-2xl shadow-xl overflow-hidden animate-slide-up">
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-amber-100 text-amber-500 flex-shrink-0">
+            <SquarePen size={18} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900">Note</p>
+            <p className="text-xs text-gray-500 truncate">{item.data.text}</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100">
+            <X size={18} className="text-gray-400" />
+          </button>
+        </div>
+
+        <button
+          onClick={handleHott}
+          className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-orange-50 active:bg-orange-100 text-left border-b border-gray-100"
+        >
+          <Flame size={20} className={hott ? 'text-orange-500' : 'text-gray-400'} />
+          <span className={`text-sm font-medium ${hott ? 'text-orange-500' : 'text-gray-800'}`}>
+            {hott ? 'Remove from Hott' : 'Add to Hott'}
+          </span>
+        </button>
+
+        <button
+          onClick={handleUnpin}
+          className="w-full flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 active:bg-gray-100 text-left"
+        >
+          <Pin size={20} className="text-gray-500 flex-shrink-0" />
+          <span className="text-sm text-gray-800">Unpin</span>
+        </button>
+
+        <div className="h-6" />
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
 function SortableNoteItem({ item, onUnpin }: { item: import('../contexts/PinnedContext').PinnedNote; onUnpin: () => void }) {
   const sortableId = `note_${item.id}`
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sortableId })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, zIndex: isDragging ? 10 : undefined, touchAction: 'pan-y' as const }
   const dueAt = item.data.dueAt ? formatNoteDueAt(item.data.dueAt) : null
 
+  const [menuOpen, setMenuOpen] = useState(false)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null }
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+    longPressTimer.current = setTimeout(() => {
+      longPressTimer.current = null
+      navigator.vibrate?.(18)
+      setMenuOpen(true)
+    }, 500)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - touchStartX.current
+    const dy = e.touches[0].clientY - touchStartY.current
+    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) cancelLongPress()
+  }
+
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <div className="flex items-start gap-3 px-3 py-2.5 border-b border-amber-100 bg-amber-50/40">
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={cancelLongPress}
+        onTouchCancel={cancelLongPress}
+        className="flex items-start gap-3 px-3 py-2.5 border-b border-amber-100 bg-amber-50/40"
+      >
         <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center bg-amber-100 text-amber-500 mt-0.5">
           <SquarePen size={16} />
         </div>
@@ -375,10 +475,20 @@ function SortableNoteItem({ item, onUnpin }: { item: import('../contexts/PinnedC
             </p>
           )}
         </div>
-        <button onClick={onUnpin} className="p-1 rounded-full hover:bg-amber-200 flex-shrink-0 transition-colors mt-0.5" aria-label="Unpin">
+        <button
+          onClick={onUnpin}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+          className="p-1 rounded-full hover:bg-amber-200 flex-shrink-0 transition-colors mt-0.5"
+          aria-label="Unpin"
+        >
           <Pin size={15} className="fill-amber-400 text-amber-400" />
         </button>
       </div>
+
+      {menuOpen && (
+        <NoteContextMenu item={item} onClose={() => setMenuOpen(false)} onUnpin={onUnpin} />
+      )}
     </div>
   )
 }

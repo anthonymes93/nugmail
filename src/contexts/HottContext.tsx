@@ -12,13 +12,22 @@ export interface HottEmail {
   addedAt: number
 }
 
-export type HottItem = HottEmail
+export interface HottNote {
+  type: 'note'
+  id: string
+  data: { text: string; dueAt?: string }
+  addedAt: number
+}
+
+export type HottItem = HottEmail | HottNote
 
 interface HottContextType {
   hott: HottItem[]
   addToHott: (email: ParsedEmail) => void
-  removeFromHott: (id: string) => void
+  addNoteToHott: (id: string, text: string, dueAt?: string) => void
+  removeFromHott: (id: string, type?: 'email' | 'note') => void
   isHott: (id: string) => boolean
+  isNoteHott: (id: string) => boolean
 }
 
 const HottContext = createContext<HottContextType | null>(null)
@@ -55,15 +64,23 @@ export function HottProvider({ children }: { children: ReactNode }) {
     setDoc(doc(db, 'users', docKey, 'hott', `email_${email.id}`), JSON.parse(JSON.stringify(item))).catch(console.error)
   }, [docKey, firebaseReady])
 
-  const removeFromHott = useCallback((id: string) => {
+  const addNoteToHott = useCallback((id: string, text: string, dueAt?: string) => {
     if (!docKey || !firebaseReady) return
-    deleteDoc(doc(db, 'users', docKey, 'hott', `email_${id}`)).catch(console.error)
+    const item: HottNote = { type: 'note', id, data: dueAt ? { text, dueAt } : { text }, addedAt: Date.now() }
+    setDoc(doc(db, 'users', docKey, 'hott', `note_${id}`), item).catch(console.error)
   }, [docKey, firebaseReady])
 
-  const isHott = useCallback((id: string) => hott.some((h) => h.id === id), [hott])
+  const removeFromHott = useCallback((id: string, type: 'email' | 'note' = 'email') => {
+    if (!docKey || !firebaseReady) return
+    deleteDoc(doc(db, 'users', docKey, 'hott', `${type}_${id}`)).catch(console.error)
+  }, [docKey, firebaseReady])
+
+  const isHott = useCallback((id: string) => hott.some((h) => h.type === 'email' && h.id === id), [hott])
+
+  const isNoteHott = useCallback((id: string) => hott.some((h) => h.type === 'note' && h.id === id), [hott])
 
   return (
-    <HottContext.Provider value={{ hott, addToHott, removeFromHott, isHott }}>
+    <HottContext.Provider value={{ hott, addToHott, addNoteToHott, removeFromHott, isHott, isNoteHott }}>
       {children}
     </HottContext.Provider>
   )

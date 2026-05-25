@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Flame } from 'lucide-react'
+import { Flame, SquarePen, CalendarClock } from 'lucide-react'
 import { useHott } from '../contexts/HottContext'
 import { formatEmailDate, getInitials, getAvatarColor } from '../utils/formatters'
 
@@ -26,10 +26,41 @@ export default function HottPage() {
       </div>
 
       {hott.map((item) => {
+        if (item.type === 'note') {
+          const dueAt = item.data.dueAt ? new Date(item.data.dueAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : null
+          return (
+            <div
+              key={`note_${item.id}`}
+              className="flex items-start gap-3 px-3 py-2 border-b border-gray-100 bg-white"
+            >
+              <div className="w-9 h-9 rounded-full flex items-center justify-center bg-amber-100 text-amber-500 flex-shrink-0 mt-0.5">
+                <SquarePen size={16} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-amber-500">Note</p>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{item.data.text}</p>
+                {dueAt && (
+                  <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-amber-600">
+                    <CalendarClock size={11} className="flex-shrink-0" />
+                    <span>Due {dueAt}</span>
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => removeFromHott(item.id, 'note')}
+                className="p-1.5 rounded-full hover:bg-orange-100 flex-shrink-0 transition-colors mt-0.5"
+                aria-label="Remove from Hott"
+              >
+                <Flame size={16} className="text-orange-400" />
+              </button>
+            </div>
+          )
+        }
+
         const { data: email } = item
         return (
           <div
-            key={item.id}
+            key={`email_${item.id}`}
             onClick={() => navigate(`/email/${email.id}?acc=${encodeURIComponent(email.accountEmail)}`)}
             className="flex items-center gap-3 px-3 py-2 border-b border-gray-100 bg-white hover:bg-orange-50 active:bg-orange-100 cursor-pointer"
           >
