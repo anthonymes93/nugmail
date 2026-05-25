@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nugmail-shell-v1'
+const CACHE_NAME = 'nugmail-shell-v2'
 const SHELL_URLS = ['/', '/inbox', '/site.webmanifest']
 
 self.addEventListener('install', (event) => {
@@ -12,6 +12,45 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
+  )
+})
+
+self.addEventListener('push', (event) => {
+  let data = {}
+  try { data = event.data?.json() ?? {} } catch { data = {} }
+
+  const { title = 'New email', body = '', messageId, silent = false } = data
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: '/pwa-icon-192.png',
+      badge: '/pwa-icon-192.png',
+      data: { messageId },
+      tag: messageId ? `email-${messageId}` : 'email-new',
+      renotify: true,
+      silent,
+    })
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+
+  const messageId = event.notification.data?.messageId
+  const targetUrl = messageId ? `/email/${messageId}` : '/inbox'
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clients) => {
+        const existing = clients.find((c) => c.url.startsWith(self.location.origin))
+        if (existing) {
+          existing.focus()
+          return existing.navigate(targetUrl)
+        }
+        return self.clients.openWindow(targetUrl)
+      })
   )
 })
 

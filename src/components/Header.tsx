@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Menu, Search, ArrowLeft, X, Plus, LogOut, UserMinus } from 'lucide-react'
+import { Menu, Search, ArrowLeft, X, Plus, LogOut, UserMinus, Bell, BellOff, Volume2, VolumeX } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useGoogleAuth } from '../hooks/useGoogleAuth'
 import { getAvatarColor, getInitials } from '../utils/formatters'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -17,6 +18,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const { enabled: notifEnabled, sound: notifSound, permission: notifPermission, isSupported: notifSupported, enable: enableNotif, disable: disableNotif, toggleSound } = usePushNotifications()
 
   const isEmailDetail = location.pathname.startsWith('/email/')
 
@@ -165,6 +167,40 @@ export default function Header({ onMenuClick }: HeaderProps) {
                   Sign out all accounts
                 </button>
               </div>
+
+              {notifSupported && (
+                <div className="border-t border-gray-100 mt-1 pt-1">
+                  {notifPermission === 'denied' ? (
+                    <p className="px-4 py-2.5 text-xs text-red-500">
+                      Notifications blocked — enable in iOS Settings
+                    </p>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        if (notifEnabled) await disableNotif()
+                        else await enableNotif()
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      {notifEnabled
+                        ? <BellOff size={16} className="text-gray-500" />
+                        : <Bell size={16} className="text-gray-500" />}
+                      {notifEnabled ? 'Disable notifications' : 'Enable notifications'}
+                    </button>
+                  )}
+                  {notifEnabled && (
+                    <button
+                      onClick={() => toggleSound(!notifSound)}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      {notifSound
+                        ? <Volume2 size={16} className="text-gray-500" />
+                        : <VolumeX size={16} className="text-gray-500" />}
+                      Sound {notifSound ? 'on' : 'off'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}

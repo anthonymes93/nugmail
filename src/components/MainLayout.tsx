@@ -8,10 +8,12 @@ import EmailDetail from './EmailDetail'
 import ComposeModal from './ComposeModal'
 import HottPage from './HottPage'
 import GoalsPage from './GoalsPage'
+import { useInboxNotifications } from '../hooks/useInboxNotifications'
 
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [composeOpen, setComposeOpen] = useState(false)
+  useInboxNotifications()
 
   return (
     <div className="flex overflow-hidden bg-g-bg" style={{ height: '100dvh' }}>
