@@ -21,9 +21,12 @@ export function useEmailList(labelId: string, searchQuery?: string) {
         accounts.map(async (account) => {
           const getFreshToken = async () => {
             if (isAccountActive(account)) return account.accessToken
-            const refreshedToken = await refreshAccount(account.user.email)
-            if (!refreshedToken) throw new Error('Session expired. Sign in again to reload your mail.')
-            return refreshedToken
+            const result = await refreshAccount(account.user.email)
+            if (!result.ok) {
+              if (result.permanent) throw new Error('Session expired. Sign in again to reload your mail.')
+              throw new Error(`Auth refresh temporarily unavailable: ${result.reason}`)
+            }
+            return result.token
           }
 
           let token = await getFreshToken()
@@ -34,9 +37,12 @@ export function useEmailList(labelId: string, searchQuery?: string) {
 
           const listRes = await listMessages().catch(async (error) => {
             if (!isGmailApiError(error) || error.status !== 401) throw error
-            const refreshedToken = await refreshAccount(account.user.email)
-            if (!refreshedToken) throw new Error('Session expired. Sign in again to reload your mail.')
-            token = refreshedToken
+            const result = await refreshAccount(account.user.email)
+            if (!result.ok) {
+              if (result.permanent) throw new Error('Session expired. Sign in again to reload your mail.')
+              throw new Error(`Auth refresh temporarily unavailable: ${result.reason}`)
+            }
+            token = result.token
             return listMessages()
           })
 
@@ -46,9 +52,12 @@ export function useEmailList(labelId: string, searchQuery?: string) {
           }
           const messages = await gmailService.batchGetMessageMetadata(token, ids).catch(async (error) => {
             if (!isGmailApiError(error) || error.status !== 401) throw error
-            const refreshedToken = await refreshAccount(account.user.email)
-            if (!refreshedToken) throw new Error('Session expired. Sign in again to reload your mail.')
-            token = refreshedToken
+            const result = await refreshAccount(account.user.email)
+            if (!result.ok) {
+              if (result.permanent) throw new Error('Session expired. Sign in again to reload your mail.')
+              throw new Error(`Auth refresh temporarily unavailable: ${result.reason}`)
+            }
+            token = result.token
             return gmailService.batchGetMessageMetadata(token, ids)
           })
           return {
