@@ -1,11 +1,14 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ],
   "crons": [
     {
       "path": "/api/poll-new-mail",
-      "schedule": "* * * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }
