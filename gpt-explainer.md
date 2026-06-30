@@ -2,7 +2,7 @@
 
 ## What It Is
 
-Nugmail is a mobile-first Progressive Web App (PWA) that acts as a custom Gmail client. It replaces the standard Gmail interface with a sleeker, touch-optimized UI that adds personal productivity features on top of your real Gmail inbox: a pinning system, a "Hott" urgent list, a personal goal tracker, and AI-powered email relevance scoring tied to your goals.
+Nugmail is a mobile-first Progressive Web App (PWA) that acts as a custom Gmail client. It replaces the standard Gmail interface with a sleeker, touch-optimigzed UI that adds personal productivity features on top of your real Gmail inbox: a pinning system, a "Hott" urgent list, a personal goal tracker, and AI-powered email relevance scoring tied to your goals.
 
 ---
 
