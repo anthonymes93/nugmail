@@ -1,6 +1,6 @@
 import { useGoogleLogin } from '@react-oauth/google'
 import { signInAnonymously } from 'firebase/auth'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { auth } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
 import type { User } from '../types/gmail'
@@ -19,6 +19,8 @@ export type RefreshResult =
 
 export function useGoogleAuth() {
   const { addAccount, updateAccountToken } = useAuth()
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
 
   const login = useGoogleLogin({
     scope: GMAIL_SCOPE,
@@ -29,47 +31,68 @@ export function useGoogleAuth() {
     // which is important when the user is re-logging in after a session reset.
     select_account: true,
     onSuccess: async (codeResponse) => {
-      console.log('[auth] OAuth code received — exchanging for tokens…')
-      const res = await fetch('/api/exchange-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: codeResponse.code }),
-      })
+      setIsLoggingIn(true)
+      setLoginError(null)
+      try {
+        console.log('[auth] OAuth code received — exchanging for tokens…')
+        const res = await fetch('/api/exchange-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: codeResponse.code }),
+        })
 
-      if (!res.ok) {
-        console.error('[auth] Token exchange failed:', res.status, await res.text())
-        return
-      }
-
-      const { access_token, expires_in, user, has_refresh_token } = await res.json()
-      console.log(
-        '[auth] Token exchange succeeded for', user?.email,
-        '| expires_in:', expires_in,
-        '| has_refresh_token:', has_refresh_token,
-      )
-      if (!has_refresh_token) {
-        console.warn(
-          '[auth] WARNING: No refresh token received from Google. ' +
-          'The session will expire in ~1 hour and cannot be silently renewed. ' +
-          'This should not happen — check that access_type=offline and prompt=consent are set.',
-        )
-      }
-
-      const typedUser: User = { email: user.email, name: user.name, picture: user.picture }
-
-      if (!auth.currentUser) {
-        try {
-          await signInAnonymously(auth)
-          console.log('[auth] Firebase anonymous sign-in succeeded')
-        } catch (err) {
-          console.error('[auth] Firebase anonymous sign-in failed:', err)
+        const raw = await res.text()
+        let data: {
+          access_token?: string
+          expires_in?: number
+          has_refresh_token?: boolean
+          user?: User
+          error?: string
+          details?: { error?: string; error_description?: string }
         }
-      }
+        try {
+          data = JSON.parse(raw)
+        } catch {
+          throw new Error(
+            'The token exchange endpoint did not return JSON. Check that /api/exchange-token is deployed as a serverless function and not rewritten to index.html.',
+          )
+        }
+        if (!res.ok || !data.access_token || !data.user?.email) {
+          console.error('[auth] Token exchange failed:', res.status, data)
+          const reason = data.details?.error_description ?? data.details?.error ?? data.error
+          throw new Error(reason ? `Google sign-in failed: ${reason}` : `Google sign-in failed (HTTP ${res.status}).`)
+        }
 
-      addAccount(access_token, expires_in ?? 3600, typedUser)
-      console.log('[auth] Account added to context for', user?.email)
+        console.log('[auth] Token exchange succeeded for', data.user.email,
+          '| expires_in:', data.expires_in, '| has_refresh_token:', data.has_refresh_token)
+        if (!data.has_refresh_token) {
+          console.warn('[auth] No new refresh token received. Sign-in works, but background renewal requires a previously saved refresh token.')
+        }
+
+        if (!auth.currentUser) {
+          try {
+            await signInAnonymously(auth)
+            console.log('[auth] Firebase anonymous sign-in succeeded')
+          } catch (err) {
+            // Gmail login is independent of Firestore authentication.
+            console.warn('[auth] Firebase anonymous sign-in failed:', err)
+          }
+        }
+
+        addAccount(data.access_token, data.expires_in ?? 3600, data.user)
+        console.log('[auth] Account added to context for', data.user.email)
+      } catch (err) {
+        console.error('[auth] Sign-in could not be completed:', err)
+        setLoginError(err instanceof Error ? err.message : 'An unexpected sign-in error occurred.')
+      } finally {
+        setIsLoggingIn(false)
+      }
     },
-    onError: (err) => console.error('[auth] Google login error:', err),
+    onError: (err) => {
+      console.error('[auth] Google login error:', err)
+      setIsLoggingIn(false)
+      setLoginError('Google authorization was cancelled or blocked. Please try again.')
+    },
   })
 
   const refreshAccount = useCallback(
@@ -117,5 +140,5 @@ export function useGoogleAuth() {
     [updateAccountToken],
   )
 
-  return { login, refreshAccount }
+  return { login, refreshAccount, loginError, isLoggingIn, clearLoginError: () => setLoginError(null) }
 }

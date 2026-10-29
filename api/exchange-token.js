@@ -6,9 +6,16 @@ export default async function handler(req, res) {
   const { code } = req.body ?? {}
   if (!code) return res.status(400).json({ error: 'Missing code' })
 
+  if (!process.env.VITE_GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    console.error('[exchange-token] Missing Google OAuth environment variables')
+    return res.status(503).json({ error: 'Google OAuth server configuration is missing (VITE_GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET).' })
+  }
+
   console.log('[exchange-token] Exchanging OAuth code for tokens…')
 
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+  let tokenRes
+  try {
+    tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -20,6 +27,10 @@ export default async function handler(req, res) {
     }),
   })
 
+  } catch (err) {
+    console.error('[exchange-token] Google token endpoint unreachable:', err)
+    return res.status(502).json({ error: 'Could not connect to Google token endpoint.' })
+  }
   const tokens = await tokenRes.json()
   if (!tokens.access_token) {
     console.error('[exchange-token] Google token exchange failed:', tokens)
