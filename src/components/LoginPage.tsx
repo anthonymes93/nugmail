@@ -4,7 +4,7 @@ import { Mail, Plus } from 'lucide-react'
 
 export default function LoginPage() {
   const { accounts } = useAuth()
-  const { login } = useGoogleAuth()
+  const { login, loginError, isLoggingIn, clearLoginError } = useGoogleAuth()
   const isAddingAccount = accounts.length > 0
 
   return (
@@ -28,12 +28,19 @@ export default function LoginPage() {
         )}
 
         <button
-          onClick={() => login()}
+          onClick={() => { clearLoginError(); login() }}
+          disabled={isLoggingIn}
           className="w-full flex items-center justify-center gap-3 border border-gray-300 rounded-lg px-5 py-3 text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
         >
           {isAddingAccount ? <Plus size={18} /> : <GoogleIcon />}
-          {isAddingAccount ? 'Add another account' : 'Sign in with Google'}
+          {isLoggingIn ? 'Completing sign-in…' : isAddingAccount ? 'Add another account' : 'Sign in with Google'}
         </button>
+
+        {loginError && (
+          <div role="alert" className="w-full rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800 break-words">
+            {loginError}
+          </div>
+        )}
 
         <p className="text-xs text-gray-400 text-center">
           We only request access to your Gmail data.
