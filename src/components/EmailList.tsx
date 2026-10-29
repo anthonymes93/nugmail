@@ -742,7 +742,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
             </button>
           ))}
         </nav>
-      )
+      )}
 
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
         <h2 className="text-sm font-medium text-gray-600">{title}</h2>
