@@ -98,8 +98,23 @@ export function useEmailList(labelId: string, searchQuery?: string, categoryLabe
     staleTime: 15_000,
   })
 
+  // Sort across *all* loaded pages (not separately within each page), then
+  // show each conversation once using its most recent loaded message.
+  // Gmail's inbox is conversation-based, so replies should not appear as
+  // multiple independent rows. Include account email in the key to avoid
+  // collapsing different Google accounts with coincidentally matching IDs.
+  const sortedEmails = (query.data?.pages.flatMap((p) => p.emails) ?? [])
+    .sort((a, b) => b.internalDate - a.internalDate)
+  const seenThreads = new Set<string>()
+  const conversationEmails = sortedEmails.filter((email) => {
+    const key = `${email.accountEmail}:${email.threadId}`
+    if (seenThreads.has(key)) return false
+    seenThreads.add(key)
+    return true
+  })
+
   return {
-    emails: query.data?.pages.flatMap((p) => p.emails) ?? [],
+    emails: conversationEmails,
     isLoading: query.isLoading,
     isRefetching: query.isRefetching && !query.isFetchingNextPage,
     isError: query.isError,
