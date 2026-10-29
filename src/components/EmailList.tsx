@@ -688,11 +688,12 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
     )
   }
 
-  if (isError) {
+  if (isError && emails.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4 text-gray-500 px-6">
         <Mail size={40} className="text-gray-300" />
-        <p className="text-sm text-center">Failed to load emails. Check your connection.</p>
+        <p className="text-sm text-center">Failed to load emails.</p>
+        <p role="alert" className="text-xs text-center break-words max-w-sm">{error instanceof Error ? error.message : 'Unknown Gmail API error'}</p>
         <button
           onClick={() => refetch()}
           className="flex items-center gap-2 bg-g-blue text-white px-4 py-2 rounded-full text-sm hover:bg-blue-700"
