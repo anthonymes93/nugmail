@@ -30,10 +30,16 @@ export function useEmailList(labelId: string, searchQuery?: string, categoryLabe
           }
 
           let token = await getFreshToken()
-          const labelIds = searchQuery ? [] : categoryLabel ? [labelId, categoryLabel] : [labelId]
+          const labelIds = searchQuery ? [] : categoryLabel && categoryLabel !== 'PRIMARY_CONFIGURED' ? [labelId, categoryLabel] : [labelId]
+          // Mirror Gmail's enabled Primary/Promotions/Social tabs. Updates and Forums
+          // are disabled, so their messages belong in Primary. Starred mail is
+          // included in Primary even when Google classifies it as Social/Promotions.
+          const gmailQuery = searchQuery ?? (categoryLabel === 'PRIMARY_CONFIGURED'
+            ? 'in:inbox (-category:social -category:promotions OR is:starred)'
+            : undefined)
 
           const listMessages = () =>
-            gmailService.listMessages(token, labelIds, tokenMap[account.user.email], searchQuery)
+            gmailService.listMessages(token, labelIds, tokenMap[account.user.email], gmailQuery)
 
           const listRes = await listMessages().catch(async (error) => {
             if (!isGmailApiError(error) || error.status !== 401) throw error
