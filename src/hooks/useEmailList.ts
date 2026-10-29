@@ -7,13 +7,13 @@ import type { ParsedEmail } from '../types/gmail'
 
 type PageTokenMap = Record<string, string | undefined>
 
-export function useEmailList(labelId: string, searchQuery?: string) {
+export function useEmailList(labelId: string, searchQuery?: string, categoryLabel?: string) {
   const { accounts } = useAuth()
   const { refreshAccount } = useGoogleAuth()
   const accountKey = accounts.map((a) => `${a.user.email}:${a.tokenExpiry}`).join(',')
 
   const query = useInfiniteQuery({
-    queryKey: ['emailList', labelId, searchQuery ?? '', accountKey],
+    queryKey: ['emailList', labelId, searchQuery ?? '', categoryLabel ?? '', accountKey],
     queryFn: async ({ pageParam }) => {
       const tokenMap = (pageParam as PageTokenMap | undefined) ?? {}
 
@@ -30,7 +30,7 @@ export function useEmailList(labelId: string, searchQuery?: string) {
           }
 
           let token = await getFreshToken()
-          const labelIds = searchQuery ? [] : [labelId]
+          const labelIds = searchQuery ? [] : categoryLabel ? [labelId, categoryLabel] : [labelId]
 
           const listMessages = () =>
             gmailService.listMessages(token, labelIds, tokenMap[account.user.email], searchQuery)
