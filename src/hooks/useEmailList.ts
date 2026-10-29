@@ -97,11 +97,11 @@ export function useEmailList(labelId: string, searchQuery?: string, categoryLabe
     // Gmail read/unread labels can change in another client. Re-fetch the active
     // list while this PWA is visible, and immediately when the user returns.
     // Avoid polling in background tabs to conserve Gmail API quota and battery.
-    refetchInterval: 12_000,
+    refetchInterval: 60_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: 'always',
     refetchOnReconnect: 'always',
-    staleTime: 5_000,
+    staleTime: 15_000,
   })
 
   // Sort across *all* loaded pages (not separately within each page), then
