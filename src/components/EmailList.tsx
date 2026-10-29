@@ -40,6 +40,15 @@ const LABEL_NAMES: Record<string, string> = {
   TRASH: 'Trash',
 }
 
+const INBOX_CATEGORIES = [
+  { id: 'primary', label: 'Primary', gmailLabel: 'CATEGORY_PERSONAL' },
+  { id: 'social', label: 'Social', gmailLabel: 'CATEGORY_SOCIAL' },
+  { id: 'promotions', label: 'Promotions', gmailLabel: 'CATEGORY_PROMOTIONS' },
+  { id: 'updates', label: 'Updates', gmailLabel: 'CATEGORY_UPDATES' },
+  { id: 'forums', label: 'Forums', gmailLabel: 'CATEGORY_FORUMS' },
+  { id: 'all', label: 'All inbox', gmailLabel: undefined },
+] as const
+
 const PULL_REFRESH_THRESHOLD = 112
 const PULL_REFRESH_MAX = 148
 const PULL_REFRESH_MIN_VISIBLE = 64
@@ -494,9 +503,12 @@ function SortableNoteItem({ item, onUnpin }: { item: import('../contexts/PinnedC
 }
 
 export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProps) {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { pathname } = useLocation()
   const searchQuery = isSearch ? (searchParams.get('q') ?? '') : undefined
+  const isInbox = labelId === 'INBOX' && !isSearch
+  const selectedCategory = INBOX_CATEGORIES.find((category) => category.id === searchParams.get('category')) ?? INBOX_CATEGORIES[0]
+  const categoryLabel = isInbox ? selectedCategory.gmailLabel : undefined
   const sentinelRef = useRef<HTMLDivElement>(null)
   const pinnedSectionRef = useRef<HTMLDivElement>(null)
   const prevPinnedHeight = useRef<number>(0)
@@ -514,7 +526,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
   const { login } = useGoogleAuth()
 
   const { emails, isLoading, isRefetching, isError, error, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } =
-    useEmailList(labelId, searchQuery)
+    useEmailList(labelId, searchQuery, categoryLabel)
   const { data: quotes } = useQuotes()
   const pullQuote = quotes?.[pullQuoteIndex % quotes.length]
   const authExpiredError = isError && error instanceof Error && error.message.includes('Session expired')
@@ -572,7 +584,7 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
     })
   }, [emails.length, pathname])
 
-  const title = isSearch ? `Search: "${searchQuery}"` : (LABEL_NAMES[labelId] ?? labelId)
+  const title = isSearch ? `Search: "${searchQuery}"` : isInbox ? selectedCategory.label : (LABEL_NAMES[labelId] ?? labelId)
   const pullProgress = Math.min(1, pullDistance / PULL_REFRESH_THRESHOLD)
 
   const updatePullDistance = (distance: number) => {
@@ -709,6 +721,28 @@ export default function EmailList({ labelId = 'INBOX', isSearch }: EmailListProp
         quote={pullQuote}
       />
       <div ref={pinnedSectionRef}><PinnedSection /></div>
+      {isInbox && (
+        <nav aria-label="Inbox categories" className="flex overflow-x-auto border-b border-gray-200 bg-white" style={{ scrollbarWidth: 'thin' }}>
+          {INBOX_CATEGORIES.map((category) => (
+            <button
+              type="button"
+              key={category.id}
+              aria-current={selectedCategory.id === category.id ? 'page' : undefined}
+              onClick={() => {
+                setSearchParams(category.id === 'primary' ? {} : { category: category.id })
+                document.getElementById('mail-scroll')?.scrollTo({ top: 0 })
+              }}
+              className={`shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                selectedCategory.id === category.id
+                  ? 'text-g-blue border-g-blue bg-blue-50/40'
+                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {category.label}
+            </button>
+          ))}
+        </nav>
+      )
 
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100">
         <h2 className="text-sm font-medium text-gray-600">{title}</h2>
