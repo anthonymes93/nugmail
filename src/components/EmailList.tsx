@@ -41,11 +41,9 @@ const LABEL_NAMES: Record<string, string> = {
 }
 
 const INBOX_CATEGORIES = [
-  { id: 'primary', label: 'Primary', gmailLabel: 'CATEGORY_PERSONAL' },
+  { id: 'primary', label: 'Primary', gmailLabel: 'PRIMARY_CONFIGURED' },
   { id: 'social', label: 'Social', gmailLabel: 'CATEGORY_SOCIAL' },
   { id: 'promotions', label: 'Promotions', gmailLabel: 'CATEGORY_PROMOTIONS' },
-  { id: 'updates', label: 'Updates', gmailLabel: 'CATEGORY_UPDATES' },
-  { id: 'forums', label: 'Forums', gmailLabel: 'CATEGORY_FORUMS' },
   { id: 'all', label: 'All inbox', gmailLabel: undefined },
 ] as const
 
